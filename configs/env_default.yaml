@@ -1,0 +1,15 @@
+# CrisisWorld environment defaults
+# Maps to models.EnvConfig
+
+num_regions: 4
+max_turns: 50
+initial_infected: 10
+noise_level: 0.1
+telemetry_lag: 1
+
+reward_weights:
+  outcome: 1.0
+  timeliness: 0.5
+  inner_compute_cost: 0.1
+  safety_violations: 1.0
+  comms_quality: 0.3

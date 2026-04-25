@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.schemas.action import OuterAction
-from src.schemas.artifact import Artifact, CleanState, RoleInput
-from src.schemas.budget import BudgetStatus
-from src.schemas.episode import LogEvent, MemoryDigest
-from src.schemas.observation import Observation
-from src.schemas.state import StepResult
+from models import Observation, OuterAction
+from schemas.artifact import Artifact, CleanState, RoleInput
+from schemas.budget import BudgetStatus
+from schemas.episode import LogEvent, MemoryDigest
 
 
 # ---------------------------------------------------------------------------
@@ -17,30 +15,40 @@ from src.schemas.state import StepResult
 # ---------------------------------------------------------------------------
 
 class _ValidEnv:
-    def reset(self, seed: int) -> Observation: ...  # type: ignore[empty-body]
-    def step(self, action: OuterAction) -> StepResult: ...  # type: ignore[empty-body]
+    def reset(self, seed=None, episode_id=None, **kwargs) -> Observation: ...  # type: ignore[empty-body]
+    def step(self, action, timeout_s=None, **kwargs) -> Observation: ...  # type: ignore[empty-body]
+
+    @property
+    def state(self): ...  # type: ignore[empty-body]
+
+    def get_metadata(self): ...  # type: ignore[empty-body]
     def close(self) -> None: ...
 
 
 class _MissingStep:
-    def reset(self, seed: int) -> Observation: ...  # type: ignore[empty-body]
+    def reset(self, seed=None, episode_id=None, **kwargs) -> Observation: ...  # type: ignore[empty-body]
+
+    @property
+    def state(self): ...  # type: ignore[empty-body]
+
+    def get_metadata(self): ...  # type: ignore[empty-body]
     def close(self) -> None: ...
 
 
 def test_env_protocol_structural_subtyping() -> None:
-    from src.protocols.env import EnvProtocol
+    from protocols.env import EnvProtocol
 
     assert isinstance(_ValidEnv(), EnvProtocol)
 
 
 def test_env_protocol_rejects_incomplete_impl() -> None:
-    from src.protocols.env import EnvProtocol
+    from protocols.env import EnvProtocol
 
     assert not isinstance(_MissingStep(), EnvProtocol)
 
 
 def test_env_protocol_rejects_unrelated_object() -> None:
-    from src.protocols.env import EnvProtocol
+    from protocols.env import EnvProtocol
 
     assert not isinstance("not an env", EnvProtocol)
     assert not isinstance(42, EnvProtocol)
@@ -64,19 +72,19 @@ class _AgentMissingAct:
 
 
 def test_agent_protocol_structural_subtyping() -> None:
-    from src.protocols.agent import AgentProtocol
+    from protocols.agent import AgentProtocol
 
     assert isinstance(_ValidAgent(), AgentProtocol)
 
 
 def test_agent_protocol_rejects_missing_reset() -> None:
-    from src.protocols.agent import AgentProtocol
+    from protocols.agent import AgentProtocol
 
     assert not isinstance(_AgentMissingReset(), AgentProtocol)
 
 
 def test_agent_protocol_rejects_missing_act() -> None:
-    from src.protocols.agent import AgentProtocol
+    from protocols.agent import AgentProtocol
 
     assert not isinstance(_AgentMissingAct(), AgentProtocol)
 
@@ -115,19 +123,19 @@ class _RolePlainAttrs:
 
 
 def test_role_protocol_structural_subtyping() -> None:
-    from src.protocols.role import RoleProtocol
+    from protocols.role import RoleProtocol
 
     assert isinstance(_ValidRole(), RoleProtocol)
 
 
 def test_role_protocol_rejects_missing_invoke() -> None:
-    from src.protocols.role import RoleProtocol
+    from protocols.role import RoleProtocol
 
     assert not isinstance(_RoleMissingInvoke(), RoleProtocol)
 
 
 def test_role_protocol_accepts_plain_attributes() -> None:
-    from src.protocols.role import RoleProtocol
+    from protocols.role import RoleProtocol
 
     assert isinstance(_RolePlainAttrs(), RoleProtocol)
 
@@ -156,19 +164,19 @@ class _BudgetMissingReset:
 
 
 def test_budget_protocol_structural_subtyping() -> None:
-    from src.protocols.budget import BudgetProtocol
+    from protocols.budget import BudgetProtocol
 
     assert isinstance(_ValidBudget(), BudgetProtocol)
 
 
 def test_budget_protocol_rejects_missing_charge() -> None:
-    from src.protocols.budget import BudgetProtocol
+    from protocols.budget import BudgetProtocol
 
     assert not isinstance(_BudgetMissingCharge(), BudgetProtocol)
 
 
 def test_budget_protocol_rejects_missing_reset() -> None:
-    from src.protocols.budget import BudgetProtocol
+    from protocols.budget import BudgetProtocol
 
     assert not isinstance(_BudgetMissingReset(), BudgetProtocol)
 
@@ -197,19 +205,19 @@ class _MemoryMissingClear:
 
 
 def test_memory_protocol_structural_subtyping() -> None:
-    from src.protocols.memory import MemoryProtocol
+    from protocols.memory import MemoryProtocol
 
     assert isinstance(_ValidMemory(), MemoryProtocol)
 
 
 def test_memory_protocol_rejects_missing_store() -> None:
-    from src.protocols.memory import MemoryProtocol
+    from protocols.memory import MemoryProtocol
 
     assert not isinstance(_MemoryMissingStore(), MemoryProtocol)
 
 
 def test_memory_protocol_rejects_missing_clear() -> None:
-    from src.protocols.memory import MemoryProtocol
+    from protocols.memory import MemoryProtocol
 
     assert not isinstance(_MemoryMissingClear(), MemoryProtocol)
 
@@ -235,18 +243,18 @@ class _LoggerMissingFlush:
 
 
 def test_logger_protocol_structural_subtyping() -> None:
-    from src.protocols.logger import LoggerProtocol
+    from protocols.logger import LoggerProtocol
 
     assert isinstance(_ValidLogger(), LoggerProtocol)
 
 
 def test_logger_protocol_rejects_missing_save() -> None:
-    from src.protocols.logger import LoggerProtocol
+    from protocols.logger import LoggerProtocol
 
     assert not isinstance(_LoggerMissingSave(), LoggerProtocol)
 
 
 def test_logger_protocol_rejects_missing_flush() -> None:
-    from src.protocols.logger import LoggerProtocol
+    from protocols.logger import LoggerProtocol
 
     assert not isinstance(_LoggerMissingFlush(), LoggerProtocol)

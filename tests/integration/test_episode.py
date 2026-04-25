@@ -1,4 +1,4 @@
-"""Integration tests for src/evaluation/ — per CLAUDE.md spec."""
+"""Integration tests for evaluation/ — per CLAUDE.md spec."""
 
 from __future__ import annotations
 
@@ -8,13 +8,17 @@ from typing import Any
 
 import pytest
 
-from src.schemas.action import NoOp, OuterAction
-from src.schemas.budget import BudgetStatus
-from src.schemas.config import ExperimentConfig
-from src.schemas.episode import EpisodeResult, EpisodeTrace, LogEvent, TurnRecord
-from src.schemas.observation import Observation, Telemetry
-from src.schemas.reward import CompositeReward, RewardComponents
-from src.schemas.state import RegionState, ResourcePool, StepResult
+from models import NoOp, Observation, OuterAction, RegionState, ResourcePool, Telemetry
+from models import CompositeReward, RewardComponents
+from schemas.budget import BudgetStatus
+from schemas.config import ExperimentConfig
+from schemas.episode import EpisodeResult, EpisodeTrace, LogEvent, TurnRecord
+
+# ---------------------------------------------------------------------------
+# Helpers: resolve Observation forward ref for BudgetStatus
+# ---------------------------------------------------------------------------
+
+Observation.model_rebuild(_types_namespace={"BudgetStatus": BudgetStatus})
 
 # ---------------------------------------------------------------------------
 # Helpers: fake factories for runner tests
@@ -56,19 +60,21 @@ class FakeEnv:
         self._turn = -1
         self._closed = False
 
-    def reset(self, seed: int) -> Observation:
+    def reset(self, seed: int | None = None, episode_id: str | None = None, **kwargs: object) -> Observation:
         self._turn = 0
         self._closed = False
         return _make_obs(0)
 
-    def step(self, action: OuterAction) -> StepResult:
+    def step(self, action: OuterAction, timeout_s: float | None = None, **kwargs: object) -> Observation:
         self._turn += 1
         done = self._turn >= self._max_turns
-        return StepResult(
-            observation=_make_obs(self._turn),
-            reward=_DEFAULT_REWARD,
-            done=done,
-            info={"turn": self._turn},
+        obs = _make_obs(self._turn)
+        return obs.model_copy(
+            update={
+                "done": done,
+                "reward": _DEFAULT_REWARD.total,
+                "metadata": {"turn": self._turn, "termination_reason": "max_turns" if done else ""},
+            },
         )
 
     def close(self) -> None:
@@ -82,11 +88,11 @@ class CrashingEnv(FakeEnv):
         super().__init__()
         self._reset_count = 0
 
-    def reset(self, seed: int) -> Observation:
+    def reset(self, seed: int | None = None, episode_id: str | None = None, **kwargs: object) -> Observation:
         self._reset_count += 1
         if self._reset_count == 2:
             raise RuntimeError("simulated crash")
-        return super().reset(seed)
+        return super().reset(seed, episode_id, **kwargs)
 
 
 class FakeAgent:
@@ -122,7 +128,7 @@ class FakeLogger:
 
 class TestAblations:
     def test_build_conditions_returns_five(self) -> None:
-        from src.evaluation.ablations import build_conditions
+        from evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -146,7 +152,7 @@ class TestAblations:
         }
 
     def test_flat_conditions_have_no_roles(self) -> None:
-        from src.evaluation.ablations import build_conditions
+        from evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -158,7 +164,7 @@ class TestAblations:
             assert c.memory_enabled is False
 
     def test_cortex_full_has_all_roles_and_memory(self) -> None:
-        from src.evaluation.ablations import build_conditions
+        from evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -172,7 +178,7 @@ class TestAblations:
         assert c.critic_enabled is True
 
     def test_matched_budget_conditions_share_budget(self) -> None:
-        from src.evaluation.ablations import build_conditions
+        from evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -183,7 +189,7 @@ class TestAblations:
         assert len(budgets) == 1  # all share same matched budget
 
     def test_low_budget_conditions_share_budget(self) -> None:
-        from src.evaluation.ablations import build_conditions
+        from evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -194,7 +200,7 @@ class TestAblations:
         assert len(budgets) == 1  # all share same low budget
 
     def test_build_conditions_with_subset_filter(self) -> None:
-        from src.evaluation.ablations import build_conditions
+        from evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -213,7 +219,7 @@ class TestAblations:
 
 class TestMetrics:
     def test_collect_episode_metrics_primary_values(self) -> None:
-        from src.evaluation.metrics import collect_episode_metrics
+        from evaluation.metrics import collect_episode_metrics
 
         trace = EpisodeTrace(
             episode_id="m1",
@@ -236,7 +242,7 @@ class TestMetrics:
         assert abs(m.total_cumulative_reward - 0.3) < 1e-9
 
     def test_collect_episode_metrics_handles_missing_info(self) -> None:
-        from src.evaluation.metrics import collect_episode_metrics
+        from evaluation.metrics import collect_episode_metrics
 
         trace = EpisodeTrace(
             episode_id="m2",
@@ -248,7 +254,7 @@ class TestMetrics:
         assert m.role_call_frequency == {}
 
     def test_aggregate_metrics_mean_and_std(self) -> None:
-        from src.evaluation.metrics import (
+        from evaluation.metrics import (
             EpisodeMetrics,
             aggregate_metrics,
         )
@@ -266,7 +272,7 @@ class TestMetrics:
         assert abs(agg.std_reward - 10.0) < 1e-9
 
     def test_aggregate_metrics_empty_list_returns_nan(self) -> None:
-        from src.evaluation.metrics import aggregate_metrics
+        from evaluation.metrics import aggregate_metrics
 
         agg = aggregate_metrics([])
         assert agg.n == 0
@@ -289,7 +295,7 @@ class TestRunner:
     def test_run_single_seed_single_condition(
         self, tmp_path: Any
     ) -> None:
-        from src.evaluation.runner import ExperimentRunner
+        from evaluation.runner import ExperimentRunner
 
         config = self._make_config()
         runner = ExperimentRunner(
@@ -303,7 +309,7 @@ class TestRunner:
         assert len(results.conditions["flat-lite"]) == 1
 
     def test_run_multi_seed_produces_correct_count(self) -> None:
-        from src.evaluation.runner import ExperimentRunner
+        from evaluation.runner import ExperimentRunner
 
         config = self._make_config(seeds=(42, 43, 44))
         runner = ExperimentRunner(
@@ -316,7 +322,7 @@ class TestRunner:
         assert len(results.conditions["flat-lite"]) == 3
 
     def test_run_all_conditions_produces_five_results(self) -> None:
-        from src.evaluation.runner import ExperimentRunner
+        from evaluation.runner import ExperimentRunner
 
         config = self._make_config(
             conditions=(
@@ -337,7 +343,7 @@ class TestRunner:
         assert len(results.conditions) == 5
 
     def test_run_episode_returns_correct_turn_count(self) -> None:
-        from src.evaluation.runner import ExperimentRunner
+        from evaluation.runner import ExperimentRunner
 
         config = self._make_config()
         runner = ExperimentRunner(
@@ -348,14 +354,31 @@ class TestRunner:
         )
         env = FakeEnv(max_turns=5)
         result = runner.run_episode(
-            env=env, agent=FakeAgent(), logger=FakeLogger(), seed=42
+            env=env, agent=FakeAgent(), logger=FakeLogger(), seed=42,
+            condition="flat-lite",
         )
         assert result.total_turns == 5
+
+    def test_run_episode_carries_condition_name(self) -> None:
+        from evaluation.runner import ExperimentRunner
+
+        config = self._make_config()
+        runner = ExperimentRunner(
+            env_factory=lambda: FakeEnv(),
+            agent_factory=lambda cond: FakeAgent(),
+            logger_factory=lambda: FakeLogger(),
+            config=config,
+        )
+        result = runner.run_episode(
+            env=FakeEnv(), agent=FakeAgent(), logger=FakeLogger(),
+            seed=42, condition="cortex-full",
+        )
+        assert result.condition == "cortex-full"
 
     def test_episode_crash_is_logged_and_skipped(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
-        from src.evaluation.runner import ExperimentRunner
+        from evaluation.runner import ExperimentRunner
 
         call_count = 0
 
@@ -383,7 +406,7 @@ class TestRunner:
         assert len(episodes) == 1
 
     def test_env_close_called_even_on_crash(self) -> None:
-        from src.evaluation.runner import ExperimentRunner
+        from evaluation.runner import ExperimentRunner
 
         close_calls: list[bool] = []
 
@@ -392,7 +415,7 @@ class TestRunner:
                 close_calls.append(True)
                 super().close()
 
-            def step(self, action: OuterAction) -> StepResult:
+            def step(self, action: OuterAction, timeout_s: float | None = None, **kwargs: object) -> Observation:
                 raise RuntimeError("step crash")
 
         config = self._make_config(seeds=(42,))
@@ -414,7 +437,7 @@ class TestRunner:
 class TestAnalysis:
     def _make_results(self) -> Any:
         """Build ExperimentResults with two conditions."""
-        from src.evaluation.runner import ExperimentResults
+        from evaluation.runner import ExperimentResults
 
         return ExperimentResults(
             conditions={
@@ -484,7 +507,7 @@ class TestAnalysis:
         )
 
     def test_comparison_table_format(self) -> None:
-        from src.evaluation.analysis import comparison_table
+        from evaluation.analysis import comparison_table
 
         results = self._make_results()
         table = comparison_table(results)
@@ -493,8 +516,8 @@ class TestAnalysis:
         assert "cortex-full" in table
 
     def test_comparison_table_nan_shows_na(self) -> None:
-        from src.evaluation.analysis import comparison_table
-        from src.evaluation.runner import ExperimentResults
+        from evaluation.analysis import comparison_table
+        from evaluation.runner import ExperimentResults
 
         results = ExperimentResults(
             conditions={
@@ -505,7 +528,7 @@ class TestAnalysis:
         assert "N/A" in table
 
     def test_diagnostic_report_skips_flat(self) -> None:
-        from src.evaluation.analysis import diagnostic_report
+        from evaluation.analysis import diagnostic_report
 
         results = self._make_results()
         report = diagnostic_report(results)
@@ -515,7 +538,7 @@ class TestAnalysis:
         )[-1].split("cortex")[0]
 
     def test_significance_summary_non_overlapping_ci(self) -> None:
-        from src.evaluation.analysis import significance_summary
+        from evaluation.analysis import significance_summary
 
         results = self._make_results()
         summary = significance_summary(results)
@@ -525,8 +548,8 @@ class TestAnalysis:
         assert "cortex-full" in summary
 
     def test_significance_summary_single_condition(self) -> None:
-        from src.evaluation.analysis import significance_summary
-        from src.evaluation.runner import ExperimentResults
+        from evaluation.analysis import significance_summary
+        from evaluation.runner import ExperimentResults
 
         results = ExperimentResults(
             conditions={

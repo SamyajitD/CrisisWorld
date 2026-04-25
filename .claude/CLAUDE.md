@@ -5,21 +5,25 @@ Central question: does budgeted structured reasoning (Cortex) beat a flat policy
 
 ## High-Level Architecture
 
-Two tightly coupled systems connected through an OpenEnv-compatible step loop:
+Two tightly coupled systems connected through an OpenEnv step loop with a
+Two-Interface architecture (HTTP for orchestration, MCP for production agents):
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        Episode Runner                               │
+│                   Episode Runner (Orchestrator)                      │
+│  episode_id = uuid4()                                               │
+│  obs = env.reset(seed, episode_id)                                  │
 │  for turn in episode:                                               │
-│    obs          = env.step(action)          # CrisisWorld advances  │
-│    action, log  = agent.act(obs)            # Agent decides         │
-│    traces.record(obs, action, log)          # Everything is logged  │
+│    action     = agent.act(obs)             # Agent decides          │
+│    obs        = env.step(action)           # CrisisWorld advances   │
+│    traces.record(obs, action)              # Everything is logged   │
+│    if obs.done: break                      # Termination check      │
 └─────────────────────────────────────────────────────────────────────┘
          │                           │
          ▼                           ▼
 ┌─────────────────┐       ┌───────────────────────────────────┐
 │   CrisisWorld   │       │         Agent (swappable)         │
-│   (outer env)   │       │                                   │
+│   (server/)     │       │                                   │
 │                 │       │  ┌─────────┐   ┌───────────────┐  │
 │  hidden epi     │       │  │  Flat   │   │    Cortex     │  │
 │  state, noisy   │       │  │ Agent   │   │    Agent      │  │
@@ -29,18 +33,27 @@ Two tightly coupled systems connected through an OpenEnv-compatible step loop:
 │  constraints,   │       │                │  │Critic   │  │  │
 │  delayed fx     │       │                │  │Modeler  │  │  │
 │                 │       │                │  │Percep.  │  │  │
-│                 │       │                │  │Budget   │  │  │
-│                 │       │                │  └─────────┘  │  │
+│  state prop:    │       │                │  │Budget   │  │  │
+│  episode_id     │       │                │  └─────────┘  │  │
+│  step_count     │       │                                │  │
 └─────────────────┘       └───────────────────────────────────┘
 ```
 
-### Outer loop — CrisisWorld
+### Two-Interface Model (OpenEnv)
 
-Stateful outbreak simulator. Maintains hidden epidemiological state, resources,
-stakeholders, policy constraints, and delayed action effects. Emits partial,
-noisy, lagged observations. Computes composite reward.
+| Interface | Consumer | Purpose |
+|-----------|----------|---------|
+| **HTTP** | ExperimentRunner (orchestrator) | `reset()`, `step()`, `state`, health, metrics |
+| **MCP** | Agent (production mode, future) | Environment-defined tools only; `reset`/`step`/`state` NEVER exposed |
 
-### Inner loop — Cortex
+### Outer loop -- CrisisWorld
+
+Stateful outbreak simulator in `server/`. Subclasses OpenEnv `Environment` ABC.
+Maintains hidden epidemiological state, resources, stakeholders, policy constraints,
+and delayed action effects. Emits partial, noisy, lagged observations. Computes
+composite reward embedded directly in `Observation.reward`.
+
+### Inner loop -- Cortex
 
 Structured deliberation system with five roles (Perception, World Modeler,
 Planner, Critic, Executive). Each role invocation has a typed input, typed
@@ -51,106 +64,115 @@ more or act. Thinking is explicitly expensive.
 
 Swappable policies behind a single `AgentProtocol`. Flat agents skip Cortex.
 Cortex agents delegate to the deliberation loop. Same interface, different
-compute organization — this is what the experiment isolates.
+compute organization -- this is what the experiment isolates.
 
 ### Evaluation
 
-Multi-seed runner that executes episodes under matched-compute conditions,
-collects primary/secondary/diagnostic metrics, and produces ablation
-comparison tables.
+Multi-seed runner (OpenEnv orchestrator) that executes episodes under
+matched-compute conditions, generates `episode_id` per episode, collects
+primary/secondary/diagnostic metrics, and produces ablation comparison tables.
 
 ---
 
-## Directory Structure — Function Signature Promises
+## Directory Structure -- Function Signature Promises
 
-Each directory exports a **protocol** (its "promise") and hides implementation.
-Other directories depend ONLY on protocols and schemas, never on concrete
-internals. Wiring happens in `main.py` / the composition root.
+The project root follows the exact `openenv init` scaffold. Non-env packages
+(protocols, schemas, cortex, agents, evaluation, tracing) live alongside the
+OpenEnv mandatory files at the root level. No `src/` wrapper.
 
 ```
 MetaFinals/
-├── CLAUDE.md
-├── project.md
-├── pyproject.toml
-├── main.py                    # Composition root — wires concrete impls
 │
-├── src/
+│   ── OPENENV MANDATORY FILES ────────────────────────────────────
+│
+├── __init__.py                        # Package root -- exports models + client
+├── models.py                          # Env-contract types (extends OpenEnv bases)
+├── client.py                          # CrisisWorldClient (EnvClient subclass)
+├── openenv.yaml                       # OpenEnv environment configuration
+├── pyproject.toml                     # Project config (OpenEnv + project deps)
+├── README.md                          # Environment + project documentation
+├── uv.lock                            # uv lockfile
+│
+├── server/                            # ── CRISISWORLD SERVER ──
+│   ├── __init__.py                    # Exports: CrisisWorld
+│   ├── app.py                         # create_fastapi_app(env, Action, Obs)
+│   ├── CrisisWorld_environment.py     # CrisisWorld(Environment) -- reset/step/state
+│   ├── Dockerfile                     # Container for isolated execution
+│   ├── requirements.txt               # Server-specific Python deps
+│   ├── dynamics.py                    # Epidemiological model
+│   ├── regions.py                     # Grid/region state management
+│   ├── resources.py                   # Resource pool tracking
+│   ├── stakeholders.py               # Signal generation
+│   ├── constraints.py                # Policy enforcement
+│   ├── actions.py                     # Action validation + delayed effects
+│   ├── observations.py               # Partial observation assembly
+│   ├── rewards.py                     # Composite reward
+│   ├── scenarios.py                   # Seeded scenario generation
+│   ├── termination.py                # Episode end conditions
+│   └── _internal.py                   # InternalState, ScheduledEffect, EpiParams
+│
+│   ── PROJECT PACKAGES ──────────────────────────────────────────
+│
+├── protocols/                         # ── CONTRACT LAYER (no implementation) ──
 │   ├── __init__.py
-│   │
-│   ├── protocols/             # ── CONTRACT LAYER (no implementation) ──
-│   │   ├── __init__.py
-│   │   ├── env.py             # EnvProtocol
-│   │   ├── agent.py           # AgentProtocol
-│   │   ├── role.py            # RoleProtocol
-│   │   ├── budget.py          # BudgetProtocol
-│   │   ├── memory.py          # MemoryProtocol
-│   │   └── logger.py          # LoggerProtocol
-│   │
-│   ├── schemas/               # ── DATA LAYER (Pydantic models, no logic) ──
-│   │   ├── __init__.py
-│   │   ├── observation.py     # Observation, IncidentReport, Telemetry
-│   │   ├── action.py          # OuterAction variants (deploy, restrict, ...)
-│   │   ├── reward.py          # RewardComponents, CompositeReward
-│   │   ├── state.py           # RegionState, ResourcePool, Constraint
-│   │   ├── artifact.py        # CleanState, BeliefState, Plan, Critique
-│   │   ├── budget.py          # BudgetStatus, BudgetLedger
-│   │   ├── config.py          # EnvConfig, CortexConfig, ExperimentConfig
-│   │   └── episode.py         # EpisodeResult, EpisodeTrace
-│   │
-│   ├── env/                   # ── CRISISWORLD (implements EnvProtocol) ──
-│   │   ├── __init__.py        # Exports: CrisisWorld
-│   │   ├── world.py           # CrisisWorld class — reset(), step()
-│   │   ├── dynamics.py        # Epidemiological model, spread, recovery
-│   │   ├── regions.py         # Grid/region state management
-│   │   ├── resources.py       # Resource pool tracking, depletion
-│   │   ├── stakeholders.py    # Signal generation (hospitals, media, etc.)
-│   │   ├── constraints.py     # Policy/legal constraint enforcement
-│   │   ├── actions.py         # Action validation + delayed-effect scheduling
-│   │   ├── observations.py    # Partial observation assembly, noise, lag
-│   │   ├── rewards.py         # Composite reward computation
-│   │   ├── scenarios.py       # Seeded scenario generation
-│   │   └── termination.py     # Episode end conditions
-│   │
-│   ├── cortex/                # ── CORTEX (implements RoleProtocol per role) ──
-│   │   ├── __init__.py        # Exports: CortexDeliberator
-│   │   ├── deliberator.py     # Orchestrates the inner deliberation loop
-│   │   ├── budget.py          # Budget accounting (implements BudgetProtocol)
-│   │   ├── memory.py          # Episode memory store (implements MemoryProtocol)
-│   │   └── roles/
-│   │       ├── __init__.py
-│   │       ├── perception.py  # Raw obs → CleanState + anomalies
-│   │       ├── world_modeler.py # CleanState → BeliefState + forecasts
-│   │       ├── planner.py     # BeliefState → candidate Plans
-│   │       ├── critic.py      # Plan → failure modes + risk score
-│   │       └── executive.py   # All artifacts → act|call|wait|escalate|stop
-│   │
-│   ├── agents/                # ── AGENTS (implement AgentProtocol) ──
-│   │   ├── __init__.py        # Exports: FlatAgent, CortexAgent
-│   │   ├── flat.py            # Direct policy, no deliberation
-│   │   └── cortex_agent.py    # Delegates to CortexDeliberator
-│   │
-│   ├── evaluation/            # ── EVALUATION (experiment orchestration) ──
-│   │   ├── __init__.py        # Exports: ExperimentRunner
-│   │   ├── runner.py          # Multi-seed episode execution
-│   │   ├── metrics.py         # Metric collection and aggregation
-│   │   ├── ablations.py       # Condition setup (flat-lite/fat, cortex-lite/full)
-│   │   └── analysis.py        # Comparison tables, diagnostics
-│   │
-│   └── logging/               # ── LOGGING (implements LoggerProtocol) ──
-│       ├── __init__.py        # Exports: EpisodeLogger
-│       ├── tracer.py          # Per-turn event recording
-│       ├── serializer.py      # Trace → JSON/file output
-│       └── formatters.py      # Human-readable trace rendering
+│   ├── env.py                         # EnvProtocol (mirrors OpenEnv Environment ABC)
+│   ├── agent.py                       # AgentProtocol (+ MCP mode docs)
+│   ├── role.py                        # RoleProtocol
+│   ├── budget.py                      # BudgetProtocol
+│   ├── memory.py                      # MemoryProtocol
+│   └── logger.py                      # LoggerProtocol
+│
+├── schemas/                           # ── AGENT-SIDE DATA (Pydantic, no logic) ──
+│   ├── __init__.py                    # Re-exports env types from models.py
+│   ├── artifact.py                    # CleanState, BeliefState, Plan, Critique
+│   ├── budget.py                      # BudgetStatus, BudgetLedger
+│   ├── config.py                      # CortexConfig, ExperimentConfig
+│   └── episode.py                     # EpisodeResult, EpisodeTrace
+│
+├── cortex/                            # ── CORTEX (implements RoleProtocol per role) ──
+│   ├── __init__.py                    # Exports: CortexDeliberator
+│   ├── deliberator.py                 # Orchestrates the inner deliberation loop
+│   ├── budget.py                      # Budget accounting (implements BudgetProtocol)
+│   ├── memory.py                      # Episode memory store (implements MemoryProtocol)
+│   └── roles/
+│       ├── __init__.py
+│       ├── perception.py              # Raw obs -> CleanState + anomalies
+│       ├── world_modeler.py           # CleanState -> BeliefState + forecasts
+│       ├── planner.py                 # BeliefState -> candidate Plans
+│       ├── critic.py                  # Plan -> failure modes + risk score
+│       └── executive.py              # All artifacts -> act|call|wait|escalate|stop
+│
+├── agents/                            # ── AGENTS (implement AgentProtocol) ──
+│   ├── __init__.py                    # Exports: FlatAgent, CortexAgent
+│   ├── flat.py                        # Direct policy, no deliberation
+│   └── cortex_agent.py               # Delegates to CortexDeliberator
+│
+├── evaluation/                        # ── EVALUATION (OpenEnv orchestrator) ──
+│   ├── __init__.py                    # Exports: ExperimentRunner
+│   ├── runner.py                      # Multi-seed episode execution
+│   ├── metrics.py                     # Metric collection and aggregation
+│   ├── ablations.py                   # Condition setup (flat-lite/fat, cortex-lite/full)
+│   └── analysis.py                    # Comparison tables, diagnostics
+│
+├── tracing/                           # ── TRACING (implements LoggerProtocol) ──
+│   ├── __init__.py                    # Exports: EpisodeTracer
+│   ├── tracer.py                      # Per-turn event recording
+│   ├── serializer.py                  # Trace -> JSON/file output
+│   └── formatters.py                 # Human-readable trace rendering
 │
 ├── tests/
 │   ├── unit/
+│   │   ├── test_models.py            # Env-contract types (models.py)
 │   │   ├── test_dynamics.py
 │   │   ├── test_regions.py
 │   │   ├── test_resources.py
 │   │   ├── test_rewards.py
 │   │   ├── test_budget.py
 │   │   ├── test_roles.py
-│   │   └── test_schemas.py
+│   │   ├── test_schemas.py           # Agent-side schemas only
+│   │   ├── test_tracer.py
+│   │   ├── test_serializer.py
+│   │   └── test_formatters.py
 │   ├── integration/
 │   │   ├── test_env_step.py
 │   │   ├── test_cortex_loop.py
@@ -166,67 +188,95 @@ MetaFinals/
 │   ├── experiment_ablation.yaml
 │   └── reward_weights.yaml
 │
-├── traces/                    # Git-ignored. Episode trace output.
-└── results/                   # Git-ignored. Experiment results.
+├── inference.py                            # Composition root -- wires everything
+├── project.md                         # Project specification
+├── traces/                            # Git-ignored. Episode trace output.
+└── results/                           # Git-ignored. Experiment results.
 ```
 
 ### Directory Responsibilities & Inter-Relations
 
-#### `src/protocols/` — Contract Layer
-**Promise**: Pure `typing.Protocol` classes. Zero implementation, zero imports
-beyond `schemas/`.
+#### `models.py` -- Env-Contract Types (LEAF NODE)
+**Promise**: All environment-facing Pydantic models extending OpenEnv base types.
+`Observation`, `ActionUnion`, `CrisisState`, `RegionState`, `ResourcePool`,
+`CompositeReward`, `EnvConfig`, `EnvironmentMetadata`.
 **Depended on by**: every other package.
-**Depends on**: `schemas/` only.
+**Depends on**: `openenv.core` + `pydantic` only. Nothing from the project.
 
-#### `src/schemas/` — Data Layer
-**Promise**: Immutable Pydantic models. No behavior, no side effects. Every
-data structure that crosses a directory boundary is defined here.
-**Depended on by**: every other package.
-**Depends on**: nothing (leaf node).
+#### `client.py` -- Remote Environment Client
+**Promise**: `CrisisWorldClient(EnvClient)` typed for `ActionUnion`/`Observation`/`CrisisState`.
+**Depends on**: `models.py` only.
 
-#### `src/env/` — CrisisWorld
-**Promise**: `EnvProtocol` — `reset(seed) -> Observation`,
-`step(action) -> StepResult`, `close() -> None`.
-**Depended on by**: `main.py` (wiring only). Never imported by `agents/` or
+#### `server/` -- CrisisWorld (implements Environment ABC)
+**Promise**: `CrisisWorld(Environment)` -- `reset(seed, episode_id) -> Observation`,
+`step(action, timeout_s) -> Observation`, `state -> CrisisState`, `get_metadata()`,
+`close()`.
+**Depended on by**: `inference.py` (wiring only). Never imported by `agents/` or
 `cortex/` directly.
-**Depends on**: `protocols/`, `schemas/`.
+**Depends on**: `models.py` only. NOT `schemas/`, `protocols/`, or any other package.
 
-#### `src/cortex/` — Deliberation System
+#### `protocols/` -- Contract Layer
+**Promise**: Pure `typing.Protocol` classes. Zero implementation.
+`EnvProtocol` mirrors OpenEnv `Environment` ABC. `AgentProtocol` supports
+two-mode operation (direct + MCP).
+**Depended on by**: every other package.
+**Depends on**: `models.py`, `schemas/`.
+
+#### `schemas/` -- Agent-Side Data Layer
+**Promise**: Immutable Pydantic models for Cortex artifacts, budget, episode traces,
+experiment config. Re-exports env types from `models.py` for convenience.
+**Depended on by**: `protocols/`, `cortex/`, `agents/`, `evaluation/`, `logging/`.
+**Depends on**: `models.py` (for re-exports only).
+
+#### `cortex/` -- Deliberation System
 **Promise**: `CortexDeliberator.deliberate(observation, budget) -> (Action, DeliberationLog)`.
 Each role implements `RoleProtocol.invoke(input) -> Artifact`.
 Budget tracker implements `BudgetProtocol`.
 **Depended on by**: `agents/cortex_agent.py` (via protocol).
-**Depends on**: `protocols/`, `schemas/`.
+**Depends on**: `protocols/`, `schemas/`, `models.py`.
 
-#### `src/agents/` — Agent Implementations
-**Promise**: `AgentProtocol.act(observation) -> Action`.
-**Depended on by**: `evaluation/`, `main.py`.
-**Depends on**: `protocols/`, `schemas/`. CortexAgent receives a
+#### `agents/` -- Agent Implementations
+**Promise**: `AgentProtocol.act(observation) -> ActionUnion`.
+**Depended on by**: `evaluation/`, `inference.py`.
+**Depends on**: `protocols/`, `schemas/`, `models.py`. CortexAgent receives a
 `CortexDeliberator` via constructor injection (protocol-typed).
 
-#### `src/evaluation/` — Experiment Runner
+#### `evaluation/` -- Experiment Runner (OpenEnv Orchestrator)
 **Promise**: `ExperimentRunner.run(config) -> ExperimentResults`.
-**Depended on by**: `main.py`.
-**Depends on**: `protocols/`, `schemas/`. Receives env and agent factories.
+Generates `episode_id` per episode. Uses `env.state` for step tracking.
+**Depended on by**: `inference.py`.
+**Depends on**: `protocols/`, `schemas/`, `models.py`. Receives env and agent factories.
 
-#### `src/logging/` — Traceability
+#### `tracing/` -- Traceability
 **Promise**: `LoggerProtocol.record(event) -> None`, `save(path) -> Path`.
+Uses `episode_id` from `CrisisState`. Aligns turn numbers with `state.step_count`.
 **Depended on by**: `evaluation/`, `agents/`, `cortex/` (via protocol).
-**Depends on**: `protocols/`, `schemas/`.
+**Depends on**: `protocols/`, `schemas/`, `models.py`.
+
+> **Note:** Renamed from `logging/` to avoid shadowing Python's stdlib `logging`.
 
 ### Dependency Graph (allowed imports)
 
 ```
-schemas/  ←── protocols/  ←── env/
-                          ←── cortex/
-                          ←── agents/
-                          ←── evaluation/
-                          ←── logging/
-                          ←── main.py (wires everything)
+models.py  ←── server/           (env-contract types, LEAF)
+           ←── schemas/          (re-exports + agent types)
+           ←── protocols/        (type references)
+           ←── cortex/
+           ←── agents/
+           ←── evaluation/
+           ←── tracing/
+           ←── inference.py
+
+schemas/   ←── protocols/
+           ←── cortex/
+           ←── agents/
+           ←── evaluation/
+           ←── tracing/
 ```
 
-**Forbidden**: `env/` ↔ `cortex/` direct import. `env/` ↔ `agents/` direct
-import. All cross-package communication goes through `protocols/` + `schemas/`.
+**Forbidden**: `server/` <-> `cortex/` direct import. `server/` <-> `agents/` direct
+import. `server/` imports NOTHING from `schemas/`, `protocols/`, or any project package.
+All cross-package communication goes through `protocols/` + `schemas/` + `models.py`.
 
 ---
 
@@ -236,30 +286,31 @@ import. All cross-package communication goes through `protocols/` + `schemas/`.
 
 - Every directory exports a `Protocol` before any implementation exists.
 - New functionality starts as a protocol method signature, then schema, then test, then implementation.
-- Cross-directory imports MUST go through `protocols/` or `schemas/`. If you need to import from a sibling package, you are violating the architecture — inject via the composition root instead.
+- Cross-directory imports MUST go through `protocols/`, `schemas/`, or `models.py`. If you need to import from a sibling package, you are violating the architecture -- inject via the composition root instead.
 
 ### 2. Immutable Data
 
 - All schemas are `frozen=True` Pydantic models.
-- State transitions in `env/` return new state objects; they do not mutate in place.
+- **Exception**: `CrisisState` uses `ConfigDict(extra="allow")` per OpenEnv `State` base -- NOT frozen, because `step_count` is mutated by the server between steps.
+- State transitions in `server/` return new state objects; they do not mutate in place.
 - Cortex artifacts are append-only per turn; never overwrite a previous artifact.
 
 ### 3. Test-Driven Development
 
-Every feature follows RED → GREEN → REFACTOR:
+Every feature follows RED -> GREEN -> REFACTOR:
 
 1. **Write the test first.** The test must fail.
 2. **Write minimal implementation** to pass the test.
 3. **Refactor** without changing behavior.
 4. **Coverage gate**: 80% minimum. CI blocks merge below this.
 
-Test organization mirrors `src/`:
-- `tests/unit/` — single function/class, no I/O, no network.
-- `tests/integration/` — multiple components wired together (env+agent, cortex+budget).
-- `tests/e2e/` — full episode from reset to termination.
+Test organization mirrors project root:
+- `tests/unit/` -- single function/class, no I/O, no network.
+- `tests/integration/` -- multiple components wired together (env+agent, cortex+budget).
+- `tests/e2e/` -- full episode from reset to termination.
 
 Every Cortex role must have:
-- A unit test that verifies input→output schema compliance.
+- A unit test that verifies input->output schema compliance.
 - A unit test that verifies budget is charged.
 - An integration test within a deliberation loop.
 
@@ -282,6 +333,7 @@ Every Cortex role must have:
 - Episode traces are written as structured JSON (one file per episode).
 - Traces live in `traces/` (git-ignored). Results live in `results/` (git-ignored).
 - If a turn is not logged, it is a bug.
+- `episode_id` flows from `env.reset()` through `CrisisState`, logging, and evaluation.
 
 ### 7. Seeded Reproducibility
 
@@ -313,10 +365,11 @@ Every Cortex role must have:
 
 Follow this order strictly:
 
-**Phase 1** — Environment skeleton + flat baseline + one E2E episode.
-**Phase 2** — Cortex-lite (Perception + Planner + Executive) + first comparison.
-**Phase 3** — Cortex-full (add World Modeler + Critic + Memory) + ablation run.
-**Phase 4** — Executive tuning, reward sweeps, diagnostics.
+**Phase 0** -- OpenEnv scaffold creation (`models.py`, `client.py`, `openenv.yaml`, `server/app.py`, `Dockerfile`).
+**Phase 1** -- Environment skeleton + flat baseline + one E2E episode.
+**Phase 2** -- Cortex-lite (Perception + Planner + Executive) + first comparison.
+**Phase 3** -- Cortex-full (add World Modeler + Critic + Memory) + ablation run.
+**Phase 4** -- Executive tuning, reward sweeps, diagnostics.
 
 > **Hard rule**: Do NOT start Cortex before the flat baseline runs end-to-end.
 
@@ -327,9 +380,9 @@ Follow this order strictly:
 ### Environment Setup
 
 ```bash
-# Create virtual environment and install
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+# Install with uv
+uv sync
+uv sync --extra dev --extra server
 ```
 
 ### Running Tests
@@ -348,45 +401,56 @@ pytest tests/integration/ -v
 pytest tests/e2e/ -v
 
 # Coverage report (must be >= 80%)
-pytest --cov=src --cov-report=term-missing --cov-fail-under=80
+pytest --cov=. --cov-report=term-missing --cov-fail-under=80
 ```
 
 ### Linting & Formatting
 
 ```bash
 # Check
-ruff check src/ tests/
-ruff format --check src/ tests/
+ruff check . tests/
+ruff format --check . tests/
 
 # Fix
-ruff check --fix src/ tests/
-ruff format src/ tests/
+ruff check --fix . tests/
+ruff format . tests/
 
 # Type checking
-mypy src/
+mypy .
 ```
 
 ### Running Episodes
 
 ```bash
 # Single flat-baseline episode
-python main.py --agent flat --seed 42
+python inference.py --agent flat --seed 42
 
 # Single cortex episode
-python main.py --agent cortex --seed 42
+python inference.py --agent cortex --seed 42
 
 # Full ablation experiment
-python main.py --experiment configs/experiment_ablation.yaml
+python inference.py --experiment configs/experiment_ablation.yaml
 
 # View trace
-python -m src.logging.formatters traces/<episode_id>.json
+python -m tracing.formatters traces/<episode_id>.json
+```
+
+### OpenEnv Server
+
+```bash
+# Start CrisisWorld server (HTTP + WebSocket)
+uvicorn server.app:app --port 8000
+
+# Docker
+docker build -t crisis-world server/
+docker run -p 8000:8000 crisis-world
 ```
 
 ### Git Workflow
 
 ```bash
 # Before every commit
-ruff check src/ tests/ && ruff format --check src/ tests/ && mypy src/ && pytest --cov=src --cov-fail-under=80
+ruff check . tests/ && ruff format --check . tests/ && mypy . && pytest --cov=. --cov-fail-under=80
 
 # Commit format
 git commit -m "feat: add resource depletion dynamics"
@@ -397,7 +461,7 @@ git commit -m "feat: add resource depletion dynamics"
 ## Reward Function Reference
 
 ```
-R = α·R_outcome + β·R_timeliness - γ·C_inner_compute - δ·R_safety_violations + ε·R_comms_quality
+R = alpha*R_outcome + beta*R_timeliness - gamma*C_inner_compute - delta*R_safety_violations + epsilon*R_comms_quality
 ```
 
 Weights are configured in `configs/reward_weights.yaml`. Tuning these is part
@@ -427,3 +491,6 @@ Primary comparison: **Flat-fat vs Cortex-full** (same compute, different organiz
 4. **Stakeholder signals**: start aggregated, separate later.
 5. **Communicator role**: defer to post-MVP.
 6. **Executive training**: prompt-driven first, RL only if time permits.
+7. **`StepResult` removed**: `Observation` carries `done`, `reward`, `metadata` per OpenEnv.
+8. **`CrisisState` not frozen**: sole exception to Rule 2 (mutable `step_count`).
+9. **`episode_id` flow**: generated by runner, passed to `reset()`, stored in `CrisisState`, used by logger.

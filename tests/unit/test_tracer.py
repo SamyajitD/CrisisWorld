@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from src.schemas.episode import EpisodeTrace, LogEvent
+from schemas.episode import EpisodeTrace, LogEvent
 
 
 class TestEpisodeTracer:
     """Tests for EpisodeTracer record/finalize/save lifecycle."""
 
     def test_record_appends_events_in_order(self) -> None:
-        from src.logging.tracer import EpisodeTracer
+        from tracing.tracer import EpisodeTracer
 
         tracer = EpisodeTracer("ep-001")
         events = [
@@ -36,7 +36,7 @@ class TestEpisodeTracer:
         ]
 
     def test_finalize_returns_episode_trace(self) -> None:
-        from src.logging.tracer import EpisodeTracer
+        from tracing.tracer import EpisodeTracer
 
         tracer = EpisodeTracer("ep-002")
         tracer.record(LogEvent(kind="observation", turn=0, data={}))
@@ -45,7 +45,7 @@ class TestEpisodeTracer:
         assert trace.episode_id == "ep-002"
 
     def test_finalize_is_idempotent(self) -> None:
-        from src.logging.tracer import EpisodeTracer
+        from tracing.tracer import EpisodeTracer
 
         tracer = EpisodeTracer("ep-003")
         tracer.record(LogEvent(kind="observation", turn=0, data={}))
@@ -54,7 +54,7 @@ class TestEpisodeTracer:
         assert trace1 is trace2
 
     def test_record_after_finalize_raises(self) -> None:
-        from src.logging.tracer import EpisodeTracer, TracerFinalizedError
+        from tracing.tracer import EpisodeTracer, TracerFinalizedError
 
         tracer = EpisodeTracer("ep-004")
         tracer.finalize()
@@ -62,7 +62,7 @@ class TestEpisodeTracer:
             tracer.record(LogEvent(kind="observation", turn=0, data={}))
 
     def test_finalize_empty_trace(self) -> None:
-        from src.logging.tracer import EpisodeTracer
+        from tracing.tracer import EpisodeTracer
 
         tracer = EpisodeTracer("ep-005")
         trace = tracer.finalize()
@@ -70,7 +70,7 @@ class TestEpisodeTracer:
         assert trace.turns == ()
 
     def test_large_event_count(self) -> None:
-        from src.logging.tracer import EpisodeTracer
+        from tracing.tracer import EpisodeTracer
 
         tracer = EpisodeTracer("ep-006")
         for i in range(10_000):
@@ -83,8 +83,8 @@ class TestEpisodeTracer:
     def test_save_delegates_to_serializer(self, tmp_path: object) -> None:
         from pathlib import Path
 
-        from src.logging.serializer import load_trace
-        from src.logging.tracer import EpisodeTracer
+        from tracing.serializer import load_trace
+        from tracing.tracer import EpisodeTracer
 
         p = Path(str(tmp_path)) / "trace.json"
         tracer = EpisodeTracer("ep-007")
@@ -98,7 +98,7 @@ class TestEpisodeTracer:
     def test_save_finalizes_implicitly(self, tmp_path: object) -> None:
         from pathlib import Path
 
-        from src.logging.tracer import EpisodeTracer, TracerFinalizedError
+        from tracing.tracer import EpisodeTracer, TracerFinalizedError
 
         p = Path(str(tmp_path)) / "trace.json"
         tracer = EpisodeTracer("ep-008")

@@ -1,0 +1,14 @@
+# Reward function weights
+# R = alpha*outcome + beta*timeliness - gamma*compute - delta*violations + epsilon*comms
+#
+# Maps to models.RewardWeights
+# Terminal bonuses (not configurable here):
+#   contained: +2.0
+#   catastrophic_mortality/spread: -3.0
+#   max_turns: -1.0
+
+outcome: 1.0           # alpha: weight on 1.0 - 2*mortality - infection_rate
+timeliness: 0.5         # beta: penalty for growing infection
+inner_compute_cost: 0.1 # gamma: cost of Cortex deliberation
+safety_violations: 1.0  # delta: penalty per constraint violation
+comms_quality: 0.3      # epsilon: bonus for public communication

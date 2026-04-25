@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.schemas.episode import EpisodeTrace, LogEvent, TurnRecord
+from schemas.episode import EpisodeTrace, LogEvent, TurnRecord
 
 
 def _trace_with_turns() -> EpisodeTrace:
@@ -60,7 +60,7 @@ def _trace_with_turns() -> EpisodeTrace:
 
 class TestFormatters:
     def test_human_readable_structure(self) -> None:
-        from src.logging.formatters import render_human_readable
+        from tracing.formatters import render_human_readable
 
         trace = _trace_with_turns()
         output = render_human_readable(trace)
@@ -71,7 +71,7 @@ class TestFormatters:
         assert "Final Summary" in output
 
     def test_render_turn_contains_key_fields(self) -> None:
-        from src.logging.formatters import render_turn
+        from tracing.formatters import render_turn
 
         record = _trace_with_turns().turns[0]
         output = render_turn(record)
@@ -81,7 +81,7 @@ class TestFormatters:
         assert "18" in output  # remaining budget
 
     def test_empty_trace_renders(self) -> None:
-        from src.logging.formatters import render_human_readable
+        from tracing.formatters import render_human_readable
 
         trace = EpisodeTrace(episode_id="empty", turns=(), seed=0)
         output = render_human_readable(trace)
@@ -89,7 +89,7 @@ class TestFormatters:
         assert "Turn 0" not in output
 
     def test_turn_without_artifacts_omits_roles(self) -> None:
-        from src.logging.formatters import render_turn
+        from tracing.formatters import render_turn
 
         record = TurnRecord(
             turn=5,
@@ -104,7 +104,7 @@ class TestFormatters:
         assert "Roles:" not in output
 
     def test_truncates_long_values(self) -> None:
-        from src.logging.formatters import MAX_LINE_WIDTH, render_turn
+        from tracing.formatters import MAX_LINE_WIDTH, render_turn
 
         record = TurnRecord(
             turn=0,
@@ -121,7 +121,7 @@ class TestFormatters:
         assert "..." in output
 
     def test_special_characters_escaped(self) -> None:
-        from src.logging.formatters import render_turn
+        from tracing.formatters import render_turn
 
         record = TurnRecord(
             turn=0,
@@ -140,7 +140,7 @@ class TestFormatters:
                 assert "\\n" in line or "line2" not in line
 
     def test_none_optional_fields(self) -> None:
-        from src.logging.formatters import render_turn
+        from tracing.formatters import render_turn
 
         record = TurnRecord(
             turn=0,

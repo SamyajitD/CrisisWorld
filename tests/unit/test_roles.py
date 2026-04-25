@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.schemas.artifact import (
+from schemas.artifact import (
     BeliefState,
     CandidateAction,
     CleanState,
@@ -13,15 +13,15 @@ from src.schemas.artifact import (
     Plan,
     RoleInput,
 )
-from src.schemas.budget import BudgetStatus
-from src.schemas.episode import MemoryDigest
-from src.schemas.observation import (
+from schemas.budget import BudgetStatus
+from schemas.episode import MemoryDigest
+from models import (
     IncidentReport,
     Observation,
     StakeholderSignal,
     Telemetry,
 )
-from src.schemas.state import Constraint, RegionState, ResourcePool
+from models import Constraint, RegionState, ResourcePool
 
 # ---------------------------------------------------------------------------
 # Shared test helpers
@@ -105,7 +105,7 @@ def _memory_digest(
 
 class TestPerception:
     def test_returns_clean_state_schema(self) -> None:
-        from src.cortex.roles.perception import PerceptionRole
+        from cortex.roles.perception import PerceptionRole
 
         role = PerceptionRole()
         result = role.invoke(
@@ -119,7 +119,7 @@ class TestPerception:
         assert isinstance(result.flagged_anomalies, tuple)
 
     def test_clamps_negative_values(self) -> None:
-        from src.cortex.roles.perception import PerceptionRole
+        from cortex.roles.perception import PerceptionRole
 
         role = PerceptionRole()
         # Build obs with a region whose infected is technically
@@ -150,7 +150,7 @@ class TestPerception:
         )
 
     def test_detects_spike_anomaly(self) -> None:
-        from src.cortex.roles.perception import PerceptionRole
+        from cortex.roles.perception import PerceptionRole
 
         role = PerceptionRole()
         prev = _clean(
@@ -177,7 +177,7 @@ class TestPerception:
         assert any("SPIKE" in a for a in result.flagged_anomalies)
 
     def test_detects_contradiction(self) -> None:
-        from src.cortex.roles.perception import PerceptionRole
+        from cortex.roles.perception import PerceptionRole
 
         role = PerceptionRole()
         obs_data = _obs(
@@ -208,7 +208,7 @@ class TestPerception:
         )
 
     def test_handles_empty_regions(self) -> None:
-        from src.cortex.roles.perception import PerceptionRole
+        from cortex.roles.perception import PerceptionRole
 
         role = PerceptionRole()
         obs_data = _obs(regions=())
@@ -221,7 +221,7 @@ class TestPerception:
         assert isinstance(result, CleanState)
 
     def test_filters_stale_reports(self) -> None:
-        from src.cortex.roles.perception import PerceptionRole
+        from cortex.roles.perception import PerceptionRole
 
         role = PerceptionRole()
         obs_data = _obs(
@@ -260,7 +260,7 @@ class TestPerception:
 
 class TestWorldModeler:
     def test_returns_belief_state_schema(self) -> None:
-        from src.cortex.roles.world_modeler import WorldModelerRole
+        from cortex.roles.world_modeler import WorldModelerRole
 
         role = WorldModelerRole()
         result = role.invoke(
@@ -277,7 +277,7 @@ class TestWorldModeler:
         assert 0.1 <= result.confidence <= 1.0
 
     def test_uses_defaults_without_memory(self) -> None:
-        from src.cortex.roles.world_modeler import WorldModelerRole
+        from cortex.roles.world_modeler import WorldModelerRole
 
         role = WorldModelerRole()
         result = role.invoke(
@@ -297,7 +297,7 @@ class TestWorldModeler:
         )
 
     def test_forecast_trajectory_structure(self) -> None:
-        from src.cortex.roles.world_modeler import WorldModelerRole
+        from cortex.roles.world_modeler import WorldModelerRole
 
         role = WorldModelerRole()
         result = role.invoke(
@@ -314,7 +314,7 @@ class TestWorldModeler:
             assert len(traj["values"]) == 5
 
     def test_confidence_decreases_with_anomalies(self) -> None:
-        from src.cortex.roles.world_modeler import WorldModelerRole
+        from cortex.roles.world_modeler import WorldModelerRole
 
         role = WorldModelerRole()
         r_clean = role.invoke(
@@ -345,7 +345,7 @@ class TestWorldModeler:
         assert r_anom.confidence >= 0.1
 
     def test_zero_infection_produces_zero_forecast(self) -> None:
-        from src.cortex.roles.world_modeler import WorldModelerRole
+        from cortex.roles.world_modeler import WorldModelerRole
 
         role = WorldModelerRole()
         result = role.invoke(
@@ -370,7 +370,7 @@ class TestWorldModeler:
 
 class TestPlanner:
     def test_returns_plan_schema(self) -> None:
-        from src.cortex.roles.planner import PlannerRole
+        from cortex.roles.planner import PlannerRole
 
         role = PlannerRole()
         result = role.invoke(
@@ -388,7 +388,7 @@ class TestPlanner:
         assert len(result.candidates) >= 1
 
     def test_respects_max_candidates(self) -> None:
-        from src.cortex.roles.planner import PlannerRole
+        from cortex.roles.planner import PlannerRole
 
         role = PlannerRole()
         result = role.invoke(
@@ -406,7 +406,7 @@ class TestPlanner:
         assert len(result.candidates) <= 2
 
     def test_always_returns_at_least_one_candidate(self) -> None:
-        from src.cortex.roles.planner import PlannerRole
+        from cortex.roles.planner import PlannerRole
 
         role = PlannerRole()
         # All actions constrained
@@ -431,7 +431,7 @@ class TestPlanner:
         assert result.candidates[-1].action.get("kind") == "noop"
 
     def test_excludes_constrained_actions(self) -> None:
-        from src.cortex.roles.planner import PlannerRole
+        from cortex.roles.planner import PlannerRole
 
         role = PlannerRole()
         result = role.invoke(
@@ -451,7 +451,7 @@ class TestPlanner:
             assert c.action.get("kind") != "deploy_resource"
 
     def test_ranks_candidates_by_confidence(self) -> None:
-        from src.cortex.roles.planner import PlannerRole
+        from cortex.roles.planner import PlannerRole
 
         role = PlannerRole()
         result = role.invoke(
@@ -471,7 +471,7 @@ class TestPlanner:
     def test_prioritizes_request_data_when_belief_empty(
         self,
     ) -> None:
-        from src.cortex.roles.planner import PlannerRole
+        from cortex.roles.planner import PlannerRole
 
         role = PlannerRole()
         empty_belief = BeliefState(
@@ -500,7 +500,7 @@ class TestPlanner:
 
 class TestCritic:
     def test_returns_critique_schema(self) -> None:
-        from src.cortex.roles.critic import CriticRole
+        from cortex.roles.critic import CriticRole
 
         role = CriticRole()
         candidate = CandidateAction(
@@ -523,7 +523,7 @@ class TestCritic:
         assert 0.0 <= result.risk_score <= 1.0
 
     def test_detects_resource_exhaustion(self) -> None:
-        from src.cortex.roles.critic import CriticRole
+        from cortex.roles.critic import CriticRole
 
         role = CriticRole()
         candidate = CandidateAction(
@@ -552,7 +552,7 @@ class TestCritic:
         )
 
     def test_flags_low_confidence_irreversible(self) -> None:
-        from src.cortex.roles.critic import CriticRole
+        from cortex.roles.critic import CriticRole
 
         role = CriticRole()
         candidate = CandidateAction(
@@ -580,7 +580,7 @@ class TestCritic:
         )
 
     def test_risk_score_increases_with_failures(self) -> None:
-        from src.cortex.roles.critic import CriticRole
+        from cortex.roles.critic import CriticRole
 
         role = CriticRole()
         # Clean candidate
@@ -624,7 +624,7 @@ class TestCritic:
         assert r_risky.risk_score > r_clean.risk_score
 
     def test_clean_pass_returns_low_risk(self) -> None:
-        from src.cortex.roles.critic import CriticRole
+        from cortex.roles.critic import CriticRole
 
         role = CriticRole()
         candidate = CandidateAction(
@@ -657,7 +657,7 @@ class TestCritic:
 
 class TestExecutive:
     def test_returns_executive_decision_schema(self) -> None:
-        from src.cortex.roles.executive import ExecutiveRole
+        from cortex.roles.executive import ExecutiveRole
 
         role = ExecutiveRole()
         plan = Plan(
@@ -691,7 +691,7 @@ class TestExecutive:
         )
 
     def test_acts_when_budget_zero(self) -> None:
-        from src.cortex.roles.executive import ExecutiveRole
+        from cortex.roles.executive import ExecutiveRole
 
         role = ExecutiveRole()
         plan = Plan(
@@ -718,7 +718,7 @@ class TestExecutive:
         assert result.decision == "act"
 
     def test_returns_noop_when_budget_zero_no_plan(self) -> None:
-        from src.cortex.roles.executive import ExecutiveRole
+        from cortex.roles.executive import ExecutiveRole
 
         role = ExecutiveRole()
         result = role.invoke(
@@ -737,7 +737,7 @@ class TestExecutive:
         assert result.target_action.get("kind") == "noop"
 
     def test_calls_world_modeler_when_anomalies(self) -> None:
-        from src.cortex.roles.executive import ExecutiveRole
+        from cortex.roles.executive import ExecutiveRole
 
         role = ExecutiveRole()
         clean = CleanState(
@@ -758,7 +758,7 @@ class TestExecutive:
         assert result.target_role == "world_modeler"
 
     def test_calls_planner_when_no_plan(self) -> None:
-        from src.cortex.roles.executive import ExecutiveRole
+        from cortex.roles.executive import ExecutiveRole
 
         role = ExecutiveRole()
         clean = CleanState()
@@ -781,7 +781,7 @@ class TestExecutive:
         assert result.target_role == "planner"
 
     def test_escalates_on_high_risk(self) -> None:
-        from src.cortex.roles.executive import ExecutiveRole
+        from cortex.roles.executive import ExecutiveRole
 
         role = ExecutiveRole()
         clean = CleanState()
@@ -819,7 +819,7 @@ class TestExecutive:
         assert result.decision == "escalate"
 
     def test_acts_on_low_risk_critique(self) -> None:
-        from src.cortex.roles.executive import ExecutiveRole
+        from cortex.roles.executive import ExecutiveRole
 
         role = ExecutiveRole()
         clean = CleanState()

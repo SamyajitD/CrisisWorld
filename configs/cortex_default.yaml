@@ -1,0 +1,12 @@
+# Cortex deliberation defaults
+# Maps to schemas.config.CortexConfig
+
+total_budget: 20
+perception_cost: 1
+world_modeler_cost: 2
+planner_cost: 2
+critic_cost: 2
+executive_cost: 1
+max_inner_iterations: 10
+memory_enabled: true
+critic_enabled: true

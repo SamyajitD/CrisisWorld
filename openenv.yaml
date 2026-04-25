@@ -1,0 +1,8 @@
+name: crisis_world
+version: "0.1.0"
+description: "Outbreak-control environment for budgeted deliberation research"
+entry_point: server.CrisisWorld_environment:CrisisWorld
+models:
+  action: models:ActionUnion
+  observation: models:Observation
+  state: models:CrisisState
