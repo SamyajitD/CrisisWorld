@@ -6,7 +6,7 @@ dependency graph — no imports from any other project module.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal, Union
 
 from openenv.core.env_server.types import (
     Action as BaseAction,
@@ -18,11 +18,31 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 # ---------------------------------------------------------------------------
-# Observation components
+# Budget snapshot (env-contract type -- server can import this)
 # ---------------------------------------------------------------------------
 
-if TYPE_CHECKING:
-    from schemas.budget import BudgetStatus
+
+class BudgetStatusSnapshot(BaseModel):
+    """Budget state snapshot for Observation. Env-contract equivalent of schemas.budget.BudgetStatus."""
+
+    model_config = ConfigDict(frozen=True)
+
+    total: int = Field(ge=0)
+    spent: int = Field(ge=0)
+    remaining: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _check_invariant(self) -> BudgetStatusSnapshot:
+        if self.remaining != self.total - self.spent:
+            raise ValueError(
+                f"remaining ({self.remaining}) must equal total - spent ({self.total - self.spent})"
+            )
+        return self
+
+
+# ---------------------------------------------------------------------------
+# Observation components
+# ---------------------------------------------------------------------------
 
 
 class StakeholderSignal(BaseModel):
@@ -195,7 +215,7 @@ class Observation(BaseObservation):
     telemetry: Telemetry
     resources: ResourcePool
     active_constraints: tuple[Constraint, ...] = ()
-    budget_status: BudgetStatus  # forward ref, resolved at import time
+    budget_status: BudgetStatusSnapshot
 
 
 # ---------------------------------------------------------------------------

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 import numpy as np
 from openenv.core.env_server.interfaces import Environment
@@ -18,7 +21,7 @@ from models import (
     OuterAction,
     RewardWeights,
 )
-from schemas.budget import BudgetStatus
+from models import BudgetStatusSnapshot
 from server._internal import InternalState
 from server.actions import validate_and_schedule
 from server.constraints import check_constraints
@@ -32,8 +35,6 @@ from server.stakeholders import generate_signals
 from server.termination import check_termination
 
 
-# Resolve Observation forward ref
-Observation.model_rebuild(_types_namespace={"BudgetStatus": BudgetStatus})
 
 
 class CrisisWorld(Environment[ActionUnion, Observation, CrisisState]):
@@ -48,7 +49,7 @@ class CrisisWorld(Environment[ActionUnion, Observation, CrisisState]):
         self._done = False
         self._closed = False
         self._initial_resources = None
-        self._budget = BudgetStatus(total=50, spent=0, remaining=50)
+        self._budget = BudgetStatusSnapshot(total=50, spent=0, remaining=50)
 
     def reset(
         self,
@@ -60,6 +61,8 @@ class CrisisWorld(Environment[ActionUnion, Observation, CrisisState]):
         if self._closed:
             raise RuntimeError("Environment is closed")
 
+        if seed is None:
+            _log.warning("No seed provided, defaulting to 0")
         actual_seed = seed if seed is not None else 0
         self._rng = np.random.default_rng(actual_seed)
 
@@ -86,7 +89,7 @@ class CrisisWorld(Environment[ActionUnion, Observation, CrisisState]):
         )
         self._initial_resources = scenario.initial_resources
         self._done = False
-        self._budget = BudgetStatus(total=50, spent=0, remaining=50)
+        self._budget = BudgetStatusSnapshot(total=50, spent=0, remaining=50)
 
         signals = generate_signals(regions, 0, self._rng)
         return assemble_observation(
@@ -103,6 +106,7 @@ class CrisisWorld(Environment[ActionUnion, Observation, CrisisState]):
                 "episode_id": self._state.episode_id,
                 "step_count": 0,
             },
+            noise_scale=self._state.epi_params.noise_scale,
         )
 
     def step(
@@ -137,7 +141,7 @@ class CrisisWorld(Environment[ActionUnion, Observation, CrisisState]):
         remaining = tuple(e for e in st.pending_effects if e.apply_on_turn > st.turn)
         st.pending_effects = remaining
         for effect in due:
-            st.resources = self._apply_effect(effect, st)
+            self._apply_effect(effect, st)
 
         # 5. Advance epidemiological dynamics
         st.regions = advance_epi_state(
@@ -183,6 +187,7 @@ class CrisisWorld(Environment[ActionUnion, Observation, CrisisState]):
                 "violations": violations,
             },
             prev_regions=prev_regions,
+            noise_scale=st.epi_params.noise_scale,
         )
 
     @property
@@ -209,14 +214,31 @@ class CrisisWorld(Environment[ActionUnion, Observation, CrisisState]):
 
     def _apply_effect(
         self, effect: Any, st: InternalState
-    ) -> Any:
-        """Apply a scheduled effect to state resources."""
+    ) -> None:
+        """Apply a scheduled effect, mutating *st* in-place."""
         if effect.effect_type == "deploy_resource":
             payload = effect.payload
-            return apply_resource_change(
+            st.resources = apply_resource_change(
                 st.resources,
                 medical=payload.get("amount", 0) if payload.get("resource") == "medical" else 0,
                 personnel=payload.get("amount", 0) if payload.get("resource") == "personnel" else 0,
                 funding=payload.get("amount", 0) if payload.get("resource") == "funding" else 0,
             )
-        return st.resources
+        elif effect.effect_type == "restrict_movement":
+            target = effect.target_region
+            st.regions = tuple(
+                r.model_copy(update={"restricted": True})
+                if r.region_id == target
+                else r
+                for r in st.regions
+            )
+        elif effect.effect_type == "reallocate_budget":
+            payload = effect.payload
+            from_cat = payload.get("from_category", "")
+            to_cat = payload.get("to_category", "")
+            amount = payload.get("amount", 0)
+            st.resources = apply_resource_change(
+                st.resources,
+                **{from_cat: -amount, to_cat: amount},
+            )
+        # escalate, request_data, public_communication: no state changes

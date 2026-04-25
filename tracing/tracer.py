@@ -18,11 +18,20 @@ class EpisodeTracer:
     Implements LoggerProtocol.
     """
 
-    def __init__(self, episode_id: str) -> None:
+    def __init__(self, episode_id: str, seed: int = 0) -> None:
         self._episode_id = episode_id
+        self._seed = seed
         self._events: list[LogEvent] = []
         self._finalized = False
         self._cached_trace: EpisodeTrace | None = None
+
+    def set_episode(self, episode_id: str, seed: int = 0) -> None:
+        """Set episode metadata. Must be called before any recording."""
+        self._episode_id = episode_id
+        self._seed = seed
+        self._events.clear()
+        self._finalized = False
+        self._cached_trace = None
 
     def record(self, event: LogEvent) -> None:
         """Append a LogEvent. Raises TracerFinalizedError after finalize()."""
@@ -39,7 +48,7 @@ class EpisodeTracer:
         self._cached_trace = EpisodeTrace(
             episode_id=self._episode_id,
             turns=tuple(turns),
-            seed=0,
+            seed=self._seed,
         )
         return self._cached_trace
 

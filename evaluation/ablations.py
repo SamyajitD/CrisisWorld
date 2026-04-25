@@ -34,6 +34,7 @@ class AblationCondition(BaseModel):
     enabled_roles: tuple[str, ...] = ()
     memory_enabled: bool = False
     critic_enabled: bool = False
+    tuned_executive: bool = False
 
 
 def get_matched_budget(config: ExperimentConfig) -> int:
@@ -86,6 +87,7 @@ def _make_all_conditions(
             enabled_roles=_ALL_ROLES,
             memory_enabled=True,
             critic_enabled=True,
+            tuned_executive=True,
         ),
     }
 

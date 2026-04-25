@@ -34,10 +34,13 @@ class WorldModelerRole:
         # Current total infected
         total_infected = _sum_infected(regions)
 
+        # Previous infected -- passed by deliberator from memory history
+        prev_infected = role_input.payload.get("prev_infected")
+
         # Hidden variables
         anomaly_count = len(anomalies)
         multiplier = 2.0 + 0.1 * anomaly_count
-        spread_rate = _estimate_spread_rate(digest)
+        spread_rate = _estimate_spread_rate(total_infected, prev_infected)
         depletion = 0.0
 
         hidden = {
@@ -73,12 +76,14 @@ def _sum_infected(regions: Any) -> int:
     return 0
 
 
+
 def _estimate_spread_rate(
-    digest: dict[str, Any],
+    clean_infected: int,
+    prev_infected: int | None,
 ) -> float:
-    num_entries = digest.get("num_entries", 0)
-    if num_entries < 2:
-        return _DEFAULT_SPREAD_RATE
+    if prev_infected is not None and prev_infected > 0:
+        ratio = clean_infected / prev_infected
+        return max(0.5, min(3.0, ratio))
     return _DEFAULT_SPREAD_RATE
 
 
@@ -103,7 +108,7 @@ def _build_forecasts(
 
     opt = _project(base_infected, spread_rate * 0.8)
     base = _project(base_infected, spread_rate)
-    pess = _project(base_infected, pessimistic_factor)
+    pess = _project(base_infected, spread_rate * pessimistic_factor)
 
     return [
         {"label": "optimistic", "values": opt},

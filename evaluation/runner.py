@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from pathlib import Path
 from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
@@ -12,7 +13,9 @@ from evaluation.ablations import AblationCondition, build_conditions
 from schemas.config import ExperimentConfig
 from schemas.episode import EpisodeResult, LogEvent
 
-logger = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
+
+logger = _log
 
 
 class ExperimentResults(BaseModel):
@@ -29,7 +32,7 @@ class ExperimentRunner:
     def __init__(
         self,
         env_factory: Callable[[], Any],
-        agent_factory: Callable[[AblationCondition], Any],
+        agent_factory: Callable[[AblationCondition, int], Any],
         logger_factory: Callable[[], Any],
         config: ExperimentConfig,
     ) -> None:
@@ -47,7 +50,7 @@ class ExperimentRunner:
             episodes: list[EpisodeResult] = []
             for seed in self._config.seeds:
                 env = self._env_factory()
-                agent = self._agent_factory(cond)
+                agent = self._agent_factory(cond, seed)
                 ep_logger = self._logger_factory()
                 try:
                     result = self.run_episode(
@@ -85,6 +88,12 @@ class ExperimentRunner:
     ) -> EpisodeResult:
         """Run a single episode. Returns EpisodeResult."""
         episode_id = f"ep-{uuid.uuid4().hex[:8]}"
+        # Set episode metadata on logger via public API
+        if hasattr(logger, "set_episode"):
+            logger.set_episode(episode_id, seed)
+        # Inject runner's logger into agent so all events go to one place
+        if hasattr(agent, "set_logger"):
+            agent.set_logger(logger)
         obs = env.reset(seed, episode_id=episode_id)
         agent.reset()
 
@@ -132,6 +141,13 @@ class ExperimentRunner:
                 termination_reason = obs.metadata.get(
                     "termination_reason", "done"
                 )
+
+        try:
+            trace_dir = Path(self._config.trace_dir)
+            trace_dir.mkdir(parents=True, exist_ok=True)
+            logger.save(trace_dir / f"{episode_id}.json")
+        except Exception:
+            _log.warning("Failed to save trace for %s", episode_id, exc_info=True)
 
         return EpisodeResult(
             episode_id=episode_id,

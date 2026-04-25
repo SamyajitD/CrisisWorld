@@ -16,6 +16,7 @@ from schemas.artifact import (
 from schemas.budget import BudgetStatus
 from schemas.episode import MemoryDigest
 from models import (
+    BudgetStatusSnapshot,
     IncidentReport,
     Observation,
     StakeholderSignal,
@@ -51,7 +52,7 @@ def _obs(
             medical=100, personnel=50, funding=200
         ),
         active_constraints=constraints,
-        budget_status=BudgetStatus(
+        budget_status=BudgetStatusSnapshot(
             total=20, spent=0, remaining=20
         ),
     )

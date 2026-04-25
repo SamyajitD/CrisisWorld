@@ -32,8 +32,11 @@ class CriticRole:
         violations: list[str] = []
         amendments: list[str] = []
 
+        # Extract resources from belief's cleaned_observation
+        resources = belief.get("cleaned_observation", {}).get("resources", {})
+
         # Resource failure
-        rf = _check_resource_failure(action)
+        rf = _check_resource_failure(action, resources)
         failures.extend(rf)
 
         # Timing failure
@@ -70,13 +73,25 @@ class CriticRole:
 
 def _check_resource_failure(
     action: dict[str, Any],
+    resources: dict[str, Any],
 ) -> list[str]:
     flags: list[str] = []
     if action.get("kind") != "deploy_resource":
         return flags
 
     amount = action.get("amount", 0)
-    total = action.get("total_available", 0)
+    resource_type = action.get("resource", "")
+    # Try to get the total from the resources dict
+    total = 0
+    if isinstance(resources, dict) and resource_type:
+        res_entry = resources.get(resource_type, {})
+        if isinstance(res_entry, dict):
+            total = res_entry.get("total", res_entry.get("available", 0))
+        elif isinstance(res_entry, (int, float)):
+            total = res_entry
+    # Fallback to action-embedded total_available
+    if total == 0:
+        total = action.get("total_available", 0)
     if total > 0:
         ratio = amount / total
         if ratio > 1.0:

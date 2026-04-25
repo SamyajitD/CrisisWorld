@@ -50,25 +50,22 @@ def check_constraints(
                 f"has < 5% infected"
             )
 
-    # 2. resource_equity
+    # 2. resource_equity -- deploying to the healthiest (lowest infection rate) region
     if (
         _is_active("resource_equity", active)
         and isinstance(action, DeployResource)
     ):
         region = _region_by_id(action.region_id, regions)
-        if region is not None:
-            max_resources = max(
-                (r.population - r.infected - r.recovered - r.deceased)
-                for r in regions
+        valid_regions = [r for r in regions if r.population > 0]
+        if region is not None and region.population > 0 and valid_regions:
+            target_rate = region.infected / region.population
+            min_rate = min(
+                r.infected / r.population for r in valid_regions
             )
-            target_resources = (
-                region.population - region.infected
-                - region.recovered - region.deceased
-            )
-            if target_resources >= max_resources:
+            if target_rate <= min_rate and len(valid_regions) > 1:
                 violations.append(
                     f"resource_equity: region {action.region_id} "
-                    f"already has most resources"
+                    f"has the lowest infection rate"
                 )
 
     # 3. escalation_requires_threshold

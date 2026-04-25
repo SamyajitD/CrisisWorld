@@ -18,14 +18,9 @@ from cortex.roles import (
     PlannerRole,
     WorldModelerRole,
 )
-from models import Escalate, NoOp, Observation, RegionState, ResourcePool, Telemetry
-from schemas.budget import BudgetStatus
+from models import BudgetStatusSnapshot, Escalate, NoOp, Observation, RegionState, ResourcePool, Telemetry
 from schemas.episode import LogEvent
 from tracing.tracer import EpisodeTracer
-
-# Resolve Observation forward ref
-Observation.model_rebuild(_types_namespace={"BudgetStatus": BudgetStatus})
-
 
 def _make_obs(turn: int = 0, infected: int = 50) -> Observation:
     return Observation(
@@ -33,7 +28,7 @@ def _make_obs(turn: int = 0, infected: int = 50) -> Observation:
         regions=(RegionState(region_id="r0", population=1000, infected=infected),),
         telemetry=Telemetry(total_infected=infected),
         resources=ResourcePool(medical=100, personnel=50, funding=200),
-        budget_status=BudgetStatus(total=20, spent=0, remaining=20),
+        budget_status=BudgetStatusSnapshot(total=20, spent=0, remaining=20),
     )
 
 

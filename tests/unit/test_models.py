@@ -164,27 +164,15 @@ class TestTelemetry:
 
 
 class TestObservation:
-    @staticmethod
-    def _resolve_observation() -> type:
-        from models import Observation
-        from schemas.budget import BudgetStatus
-
-        Observation.model_rebuild(
-            _types_namespace={"BudgetStatus": BudgetStatus}
-        )
-        return Observation
-
     def _make_obs(self, **overrides: object) -> object:
-        from models import RegionState, ResourcePool, Telemetry
-        from schemas.budget import BudgetStatus
+        from models import BudgetStatusSnapshot, Observation, RegionState, ResourcePool, Telemetry
 
-        Observation = self._resolve_observation()
         defaults: dict = dict(
             turn=0,
             regions=(RegionState(region_id="a", population=100),),
             telemetry=Telemetry(),
             resources=ResourcePool(),
-            budget_status=BudgetStatus(total=20, spent=0, remaining=20),
+            budget_status=BudgetStatusSnapshot(total=20, spent=0, remaining=20),
         )
         defaults.update(overrides)
         return Observation(**defaults)

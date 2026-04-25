@@ -36,6 +36,7 @@ from schemas.episode import (
 # --- Env-contract re-exports (canonical source: models.py) ---
 from models import (
     ActionUnion,
+    BudgetStatusSnapshot,
     CompositeReward,
     Constraint,
     CrisisState,
@@ -57,11 +58,6 @@ from models import (
     RewardWeights,
     StakeholderSignal,
     Telemetry,
-)
-
-# Resolve Observation's BudgetStatus forward reference
-Observation.model_rebuild(
-    _types_namespace={"BudgetStatus": BudgetStatus}
 )
 
 __all__ = [

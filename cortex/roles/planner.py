@@ -90,30 +90,41 @@ def _enumerate_actions(
     """Generate applicable actions from belief state."""
     candidates: list[dict[str, Any]] = []
 
-    # Deploy resource
-    candidates.append({
-        "action": {
-            "kind": "deploy_resource",
-            "resource": "medical",
-            "region_id": "auto",
-            "amount": 10,
-        },
-        "rationale": "Deploy medical resources",
-        "expected_effect": "Reduce infection rate",
-    })
+    # Extract region data from belief (via artifacts chain)
+    regions = belief.get("cleaned_observation", {}).get("regions", [])
 
-    # Restrict movement
-    candidates.append({
-        "action": {
-            "kind": "restrict_movement",
-            "region_id": "auto",
-            "level": 1,
-        },
-        "rationale": "Restrict movement to contain spread",
-        "expected_effect": "Slow transmission",
-    })
+    if regions:
+        # Sort by infected count descending, target highest-infection regions
+        sorted_regions = sorted(
+            regions,
+            key=lambda r: r.get("infected", 0),
+            reverse=True,
+        )
+        for reg in sorted_regions[:2]:
+            rid = reg.get("region_id", "unknown")
+            # Deploy resource
+            candidates.append({
+                "action": {
+                    "kind": "deploy_resource",
+                    "resource": "medical",
+                    "region_id": rid,
+                    "amount": 10,
+                },
+                "rationale": f"Deploy medical resources to {rid}",
+                "expected_effect": "Reduce infection rate",
+            })
+            # Restrict movement
+            candidates.append({
+                "action": {
+                    "kind": "restrict_movement",
+                    "region_id": rid,
+                    "level": 1,
+                },
+                "rationale": f"Restrict movement in {rid} to contain spread",
+                "expected_effect": "Slow transmission",
+            })
 
-    # Request data
+    # Request data (always available)
     candidates.append({
         "action": {"kind": "request_data", "source": "telemetry"},
         "rationale": "Improve data quality",

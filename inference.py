@@ -21,7 +21,7 @@ from agents.cortex_agent import CortexAgent
 from agents.flat import FlatAgent
 from cortex.budget import BudgetTracker
 from cortex.deliberator import CortexDeliberator
-from cortex.memory import EpisodeMemory
+from cortex.memory import EpisodeMemory, NullMemory
 from cortex.roles import (
     CriticRole,
     ExecutiveRole,
@@ -56,9 +56,9 @@ def _make_env(config: EnvConfig) -> CrisisWorld:
     return CrisisWorld(config=config)
 
 
-def _make_flat_agent(config: EnvConfig, seed: int) -> FlatAgent:
+def _make_flat_agent(config: EnvConfig, seed: int, fat_mode: bool = False) -> FlatAgent:
     rng = np.random.default_rng(seed)
-    return FlatAgent(config=config, rng=rng)
+    return FlatAgent(config=config, rng=rng, fat_mode=fat_mode)
 
 
 def _make_cortex_agent(cond: Any, cortex_config: CortexConfig) -> CortexAgent:
@@ -74,11 +74,17 @@ def _make_cortex_agent(cond: Any, cortex_config: CortexConfig) -> CortexAgent:
     enabled = set(cond.enabled_roles) if hasattr(cond, "enabled_roles") else set(all_role_map.keys())
     enabled.add("perception")
     enabled.add("executive")
-    roles = {name: cls() for name, cls in all_role_map.items() if name in enabled}
+    roles = {}
+    for name, cls in all_role_map.items():
+        if name not in enabled:
+            continue
+        if name == "executive" and getattr(cond, "tuned_executive", False):
+            roles[name] = cls(risk_threshold=0.2)
+        else:
+            roles[name] = cls()
 
-    memory = EpisodeMemory() if getattr(cond, "memory_enabled", True) else EpisodeMemory()
-    episode_id = f"ep-{uuid.uuid4().hex[:8]}"
-    ep_logger = EpisodeTracer(episode_id=episode_id)
+    memory = EpisodeMemory() if getattr(cond, "memory_enabled", True) else NullMemory()
+    ep_logger = EpisodeTracer(episode_id="pending")
     budget_total = getattr(cond, "budget", cortex_config.total_budget)
     budget = BudgetTracker(budget_total)
     deliberator = CortexDeliberator(roles=roles, memory=memory, logger=ep_logger)
@@ -91,8 +97,7 @@ def _make_cortex_agent(cond: Any, cortex_config: CortexConfig) -> CortexAgent:
 
 
 def _make_logger() -> EpisodeTracer:
-    episode_id = f"ep-{uuid.uuid4().hex[:8]}"
-    return EpisodeTracer(episode_id=episode_id)
+    return EpisodeTracer(episode_id="pending", seed=0)
 
 
 def _build_agent(
@@ -105,7 +110,8 @@ def _build_agent(
     agent_type = getattr(cond, "agent_type", "flat")
     if agent_type == "cortex":
         return _make_cortex_agent(cond, cortex_config)
-    return _make_flat_agent(env_config, seed)
+    fat_mode = "fat" in getattr(cond, "name", "")
+    return _make_flat_agent(env_config, seed, fat_mode=fat_mode)
 
 
 # ---------------------------------------------------------------------------
@@ -170,8 +176,8 @@ def main() -> None:
 
     runner = ExperimentRunner(
         env_factory=lambda: _make_env(env_config),
-        agent_factory=lambda cond: _build_agent(
-            cond, env_config, cortex_config, args.seed
+        agent_factory=lambda cond, seed: _build_agent(
+            cond, env_config, cortex_config, seed
         ),
         logger_factory=_make_logger,
         config=exp_config,

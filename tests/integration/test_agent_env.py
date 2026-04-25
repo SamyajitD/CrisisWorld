@@ -21,6 +21,7 @@ from cortex.roles import (
     WorldModelerRole,
 )
 from models import (
+    BudgetStatusSnapshot,
     EnvConfig,
     NoOp,
     Observation,
@@ -30,12 +31,8 @@ from models import (
     StakeholderSignal,
     Telemetry,
 )
-from schemas.budget import BudgetStatus
 from schemas.episode import LogEvent
 from tracing.tracer import EpisodeTracer
-
-Observation.model_rebuild(_types_namespace={"BudgetStatus": BudgetStatus})
-
 
 def _make_obs(
     turn: int = 0, infected: int = 50, medical: int = 100, urgency: float = 0.3,
@@ -51,7 +48,7 @@ def _make_obs(
         ),
         telemetry=Telemetry(total_infected=infected + infected // 2),
         resources=ResourcePool(medical=medical, personnel=50, funding=200),
-        budget_status=BudgetStatus(total=20, spent=0, remaining=20),
+        budget_status=BudgetStatusSnapshot(total=20, spent=0, remaining=20),
     )
 
 
@@ -169,7 +166,7 @@ class TestAgentEnv:
             regions=(),
             telemetry=Telemetry(),
             resources=ResourcePool(),
-            budget_status=BudgetStatus(total=20, spent=0, remaining=20),
+            budget_status=BudgetStatusSnapshot(total=20, spent=0, remaining=20),
         )
         flat = FlatAgent(config=EnvConfig(), rng=np.random.default_rng(42))
         action = flat.act(minimal_obs)

@@ -8,17 +8,10 @@ from typing import Any
 
 import pytest
 
-from models import NoOp, Observation, OuterAction, RegionState, ResourcePool, Telemetry
+from models import BudgetStatusSnapshot, NoOp, Observation, OuterAction, RegionState, ResourcePool, Telemetry
 from models import CompositeReward, RewardComponents
-from schemas.budget import BudgetStatus
 from schemas.config import ExperimentConfig
 from schemas.episode import EpisodeResult, EpisodeTrace, LogEvent, TurnRecord
-
-# ---------------------------------------------------------------------------
-# Helpers: resolve Observation forward ref for BudgetStatus
-# ---------------------------------------------------------------------------
-
-Observation.model_rebuild(_types_namespace={"BudgetStatus": BudgetStatus})
 
 # ---------------------------------------------------------------------------
 # Helpers: fake factories for runner tests
@@ -31,7 +24,7 @@ _DEFAULT_OBS = Observation(
     ),
     telemetry=Telemetry(total_infected=10),
     resources=ResourcePool(medical=100, personnel=50, funding=200),
-    budget_status=BudgetStatus(total=50, spent=0, remaining=50),
+    budget_status=BudgetStatusSnapshot(total=50, spent=0, remaining=50),
 )
 
 _DEFAULT_REWARD = CompositeReward(
@@ -45,7 +38,7 @@ def _make_obs(turn: int) -> Observation:
     return _DEFAULT_OBS.model_copy(
         update={
             "turn": turn,
-            "budget_status": BudgetStatus(
+            "budget_status": BudgetStatusSnapshot(
                 total=50, spent=turn * 2, remaining=50 - turn * 2
             ),
         },
@@ -300,7 +293,7 @@ class TestRunner:
         config = self._make_config()
         runner = ExperimentRunner(
             env_factory=lambda: FakeEnv(),
-            agent_factory=lambda cond: FakeAgent(),
+            agent_factory=lambda cond, seed=0: FakeAgent(),
             logger_factory=lambda: FakeLogger(),
             config=config,
         )
@@ -314,7 +307,7 @@ class TestRunner:
         config = self._make_config(seeds=(42, 43, 44))
         runner = ExperimentRunner(
             env_factory=lambda: FakeEnv(),
-            agent_factory=lambda cond: FakeAgent(),
+            agent_factory=lambda cond, seed=0: FakeAgent(),
             logger_factory=lambda: FakeLogger(),
             config=config,
         )
@@ -335,7 +328,7 @@ class TestRunner:
         )
         runner = ExperimentRunner(
             env_factory=lambda: FakeEnv(),
-            agent_factory=lambda cond: FakeAgent(),
+            agent_factory=lambda cond, seed=0: FakeAgent(),
             logger_factory=lambda: FakeLogger(),
             config=config,
         )
@@ -348,7 +341,7 @@ class TestRunner:
         config = self._make_config()
         runner = ExperimentRunner(
             env_factory=lambda: FakeEnv(max_turns=5),
-            agent_factory=lambda cond: FakeAgent(),
+            agent_factory=lambda cond, seed=0: FakeAgent(),
             logger_factory=lambda: FakeLogger(),
             config=config,
         )
@@ -365,7 +358,7 @@ class TestRunner:
         config = self._make_config()
         runner = ExperimentRunner(
             env_factory=lambda: FakeEnv(),
-            agent_factory=lambda cond: FakeAgent(),
+            agent_factory=lambda cond, seed=0: FakeAgent(),
             logger_factory=lambda: FakeLogger(),
             config=config,
         )
@@ -395,7 +388,7 @@ class TestRunner:
 
         runner = ExperimentRunner(
             env_factory=lambda: crash_env,
-            agent_factory=lambda cond: FakeAgent(),
+            agent_factory=lambda cond, seed=0: FakeAgent(),
             logger_factory=lambda: FakeLogger(),
             config=config,
         )
@@ -421,7 +414,7 @@ class TestRunner:
         config = self._make_config(seeds=(42,))
         runner = ExperimentRunner(
             env_factory=lambda: TrackingEnv(),
-            agent_factory=lambda cond: FakeAgent(),
+            agent_factory=lambda cond, seed=0: FakeAgent(),
             logger_factory=lambda: FakeLogger(),
             config=config,
         )

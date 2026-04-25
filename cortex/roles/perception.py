@@ -129,6 +129,8 @@ def _detect_spikes(
     flags: list[str] = []
     cleaned = previous.get("cleaned_observation", previous)
     prev_r = cleaned.get("regions", cleaned)
+    if isinstance(prev_r, list):
+        prev_r = {r.get("region_id", ""): r for r in prev_r}
 
     for r in regions:
         rid = r.get("region_id", "")
@@ -170,6 +172,8 @@ def _diff_observations(
     changes: list[str] = []
     cleaned = previous.get("cleaned_observation", previous)
     prev_r = cleaned.get("regions", cleaned)
+    if isinstance(prev_r, list):
+        prev_r = {r.get("region_id", ""): r for r in prev_r}
 
     for r in regions:
         rid = r.get("region_id", "")

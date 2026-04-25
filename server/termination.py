@@ -16,7 +16,13 @@ def check_termination(
 
     Returns (done, reason). First match wins.
     """
+    if not regions:
+        return (False, "")
+
     total_pop = sum(r.population for r in regions)
+    if total_pop == 0:
+        return (False, "")
+
     total_infected = sum(r.infected for r in regions)
     total_deceased = sum(r.deceased for r in regions)
 

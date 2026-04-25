@@ -27,9 +27,12 @@ logger = stdlib_logging.getLogger(__name__)
 class FlatAgent:
     """Heuristic policy with 8-rule priority cascade."""
 
-    def __init__(self, config: EnvConfig, rng: np.random.Generator) -> None:
+    def __init__(
+        self, config: EnvConfig, rng: np.random.Generator, fat_mode: bool = False
+    ) -> None:
         self._config = config
         self._rng = rng
+        self._fat_mode = fat_mode
         self._turn_count = 0
         self._last_action_kind: str | None = None
         self._escalated = False
@@ -43,10 +46,97 @@ class FlatAgent:
         resources = observation.resources
         signals = observation.stakeholder_signals
 
-        action = self._cascade(regions, resources, signals, observation)
+        if self._fat_mode:
+            action = self._fat_act(regions, resources, signals, observation)
+        else:
+            action = self._cascade(regions, resources, signals, observation)
         self._last_action_kind = action.kind
         self._turn_count += 1
         return action
+
+    def _fat_act(
+        self,
+        regions: tuple[RegionState, ...],
+        resources: Any,
+        signals: Any,
+        obs: Observation,
+    ) -> OuterAction:
+        """Two-pass evaluation with jittered thresholds; prefer action over inaction."""
+        candidate1 = self._cascade(regions, resources, signals, obs)
+
+        # Jitter thresholds for second pass by saving/restoring state
+        saved_escalated = self._escalated
+        saved_data_requested = self._data_requested
+        saved_last_kind = self._last_action_kind
+
+        # Apply jitter factor to influence cascade differently
+        jitter = self._rng.uniform(0.9, 1.1)
+        candidate2 = self._cascade_jittered(regions, resources, signals, obs, jitter)
+
+        # Restore state so the second pass doesn't leave side-effects
+        self._escalated = saved_escalated
+        self._data_requested = saved_data_requested
+        self._last_action_kind = saved_last_kind
+
+        if candidate1.kind == candidate2.kind:
+            return candidate1
+        # Prefer action over inaction
+        if candidate1.kind == "noop":
+            return candidate2
+        if candidate2.kind == "noop":
+            return candidate1
+        return candidate1
+
+    def _cascade_jittered(
+        self,
+        regions: tuple[RegionState, ...],
+        resources: Any,
+        signals: Any,
+        obs: Observation,
+        jitter: float,
+    ) -> OuterAction:
+        """Cascade with jittered infection-rate thresholds."""
+        if not regions:
+            return NoOp()
+
+        worst = _worst_region(regions)
+        worst_rate = _infection_rate(worst) if worst else 0.0
+
+        if worst_rate > 0.15 * jitter and resources.medical > 0:
+            amount = _pick_deploy_amount(resources.medical, worst)
+            if amount > 0:
+                return DeployResource(
+                    resource="medical", region_id=worst.region_id, amount=amount
+                )
+
+        if resources.medical == 0 and resources.funding > 0:
+            return ReallocateBudget(
+                from_category="funding", to_category="medical",
+                amount=max(1, resources.funding // 3),
+            )
+        if resources.personnel == 0 and resources.funding > 0:
+            return ReallocateBudget(
+                from_category="funding", to_category="personnel",
+                amount=max(1, resources.funding // 3),
+            )
+
+        if not self._escalated:
+            for sig in signals:
+                if sig.urgency >= 0.8:
+                    self._escalated = True
+                    return Escalate(agency=sig.source)
+
+        if worst_rate > 0.08 * jitter and not worst.restricted and self._last_action_kind != "restrict_movement":
+            level = 1 if worst_rate < 0.12 * jitter else 2
+            return RestrictMovement(region_id=worst.region_id, level=level)
+
+        if worst_rate > 0.03 * jitter and resources.medical > 0 and self._last_action_kind != "deploy_resource":
+            amount = max(1, resources.medical // 4)
+            return DeployResource(
+                resource="medical", region_id=worst.region_id, amount=amount
+            )
+
+        return NoOp()
 
     def reset(self) -> None:
         self._turn_count = 0

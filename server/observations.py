@@ -15,14 +15,14 @@ from models import (
     StakeholderSignal,
     Telemetry,
 )
-from schemas.budget import BudgetStatus
+from models import BudgetStatusSnapshot
 
 
-def _noisy_count(true_val: int, rng: np.random.Generator) -> int:
+def _noisy_count(true_val: int, rng: np.random.Generator, noise_scale: float = 0.2) -> int:
     """Add Gaussian noise proportional to true value, clamp >= 0."""
     if true_val == 0:
         return 0
-    noise = rng.normal(0, 0.2 * true_val)
+    noise = rng.normal(0, noise_scale * true_val)
     return max(0, int(round(true_val + noise)))
 
 
@@ -40,21 +40,22 @@ def assemble_observation(
     resources: ResourcePool,
     constraints: tuple[Constraint, ...],
     signals: tuple[StakeholderSignal, ...],
-    budget_status: BudgetStatus,
+    budget_status: BudgetStatusSnapshot,
     turn: int,
     rng: np.random.Generator,
     done: bool = False,
     reward: float | None = None,
     metadata: dict[str, Any] | None = None,
     prev_regions: tuple[RegionState, ...] | None = None,
+    noise_scale: float = 0.2,
 ) -> Observation:
     """Build a partial, noisy observation for the agent."""
     # Noisy region states
     noisy_regions: list[RegionState] = []
     for r in regions:
-        ni = _noisy_count(r.infected, rng)
-        nr = _noisy_count(r.recovered, rng)
-        nd = _noisy_count(r.deceased, rng)
+        ni = _noisy_count(r.infected, rng, noise_scale)
+        nr = _noisy_count(r.recovered, rng, noise_scale)
+        nd = _noisy_count(r.deceased, rng, noise_scale)
         ni, nr, nd = _clamp_to_pop(ni, nr, nd, r.population)
         noisy_regions.append(
             RegionState(

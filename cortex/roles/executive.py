@@ -10,6 +10,9 @@ from schemas.artifact import ExecutiveDecision, RoleInput
 class ExecutiveRole:
     """Evaluate artifacts and decide: act, call, wait, escalate, stop."""
 
+    def __init__(self, risk_threshold: float = 0.3) -> None:
+        self._risk_threshold = risk_threshold
+
     @property
     def role_name(self) -> str:
         return "executive"
@@ -104,7 +107,7 @@ class ExecutiveRole:
         # 7. Plan + Critique
         if plan and critique:
             risk = critique.get("risk_score", 0.5)
-            if risk < 0.3:
+            if risk < self._risk_threshold:
                 candidate = _best_candidate(plan)
                 return ExecutiveDecision(
                     decision="act",
@@ -122,6 +125,14 @@ class ExecutiveRole:
                     decision="call",
                     target_role="planner",
                     reasoning="Medium risk, re-planning",
+                )
+            else:
+                # Medium risk, budget too low to re-plan — act with best
+                candidate = _best_candidate(plan)
+                return ExecutiveDecision(
+                    decision="act",
+                    target_action=candidate or {"kind": "noop"},
+                    reasoning=f"Medium risk ({risk:.2f}), low budget, acting",
                 )
 
         # 8. Fallback

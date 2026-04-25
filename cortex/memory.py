@@ -35,3 +35,22 @@ class EpisodeMemory:
 
     def reset(self) -> None:
         self.clear()
+
+
+class NullMemory:
+    """No-op memory that satisfies MemoryProtocol but discards all stores."""
+
+    def store(self, key: str, artifact: object) -> None:
+        pass
+
+    def retrieve(self, key: str) -> list:
+        return []
+
+    def digest(self) -> MemoryDigest:
+        return MemoryDigest()
+
+    def clear(self) -> None:
+        pass
+
+    def reset(self) -> None:
+        pass

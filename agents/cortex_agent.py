@@ -58,6 +58,12 @@ class CortexAgent:
         self._turn_count += 1
         return action
 
+    def set_logger(self, ep_logger: LoggerProtocol) -> None:
+        """Inject the episode logger (called by runner before each episode)."""
+        self._logger = ep_logger
+        if hasattr(self._deliberator, "_logger"):
+            self._deliberator._logger = ep_logger
+
     def reset(self) -> None:
         self._deliberator.reset()
         self._budget.reset(self._initial_budget)

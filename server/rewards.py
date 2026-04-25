@@ -76,6 +76,8 @@ def compute_reward(
         total += 2.0
     elif termination_reason in ("catastrophic_mortality", "catastrophic_spread"):
         total -= 3.0
+    elif termination_reason == "resource_collapse":
+        total -= 2.0
     elif termination_reason == "max_turns":
         total -= 1.0
 
