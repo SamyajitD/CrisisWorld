@@ -6,7 +6,7 @@ import math
 
 import numpy as np
 
-from models import EnvConfig, RegionState
+from ..models import EnvConfig, RegionState
 
 
 def init_regions(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from schemas.artifact import BeliefState, RoleInput
+from ...schemas.artifact import BeliefState, RoleInput
 
 _DEFAULT_SPREAD_RATE = 1.1
 _FORECAST_HORIZON = 5

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from models import RegionState, StakeholderSignal
+from ..models import RegionState, StakeholderSignal
 
 # (source_name, lag_min, lag_max, message_template)
 _SOURCES: tuple[tuple[str, int, int, str], ...] = (

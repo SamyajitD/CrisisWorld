@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from schemas.artifact import Artifact
-from schemas.episode import MemoryDigest
+from ..schemas.artifact import Artifact
+from ..schemas.episode import MemoryDigest
 
 
 @runtime_checkable

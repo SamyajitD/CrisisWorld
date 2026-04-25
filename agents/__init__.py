@@ -1,6 +1,6 @@
 """Agent implementations — FlatAgent and CortexAgent."""
 
-from agents.cortex_agent import CortexAgent
-from agents.flat import FlatAgent
+from .cortex_agent import CortexAgent
+from .flat import FlatAgent
 
 __all__ = ["CortexAgent", "FlatAgent"]

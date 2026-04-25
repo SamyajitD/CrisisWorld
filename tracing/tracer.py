@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 
-from schemas.episode import EpisodeTrace, LogEvent, TurnRecord
+from ..schemas.episode import EpisodeTrace, LogEvent, TurnRecord
 
 
 class TracerFinalizedError(Exception):
@@ -54,7 +54,7 @@ class EpisodeTracer:
 
     def save(self, path: Path) -> Path:
         """Finalize and write trace to disk. Returns path."""
-        from tracing.serializer import save_trace
+        from .serializer import save_trace
 
         trace = self.finalize()
         return save_trace(trace, path)

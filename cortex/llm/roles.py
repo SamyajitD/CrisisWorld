@@ -16,8 +16,8 @@ from schemas.artifact import (
     RoleInput,
 )
 
-from cortex.llm.prompts import ROLE_PROMPTS
-from cortex.llm.provider import HuggingFaceProvider
+from .prompts import ROLE_PROMPTS
+from .provider import HuggingFaceProvider
 
 _log = logging.getLogger(__name__)
 

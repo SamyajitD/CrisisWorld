@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from models import (
+from ..models import (
     DeployResource,
     EnvConfig,
     Escalate,

@@ -6,8 +6,8 @@ import math
 import statistics
 from typing import Any
 
-from evaluation.metrics import compute_confidence_interval
-from evaluation.runner import ExperimentResults
+from .metrics import compute_confidence_interval
+from .runner import ExperimentResults
 
 
 def comparison_table(results: ExperimentResults) -> str:

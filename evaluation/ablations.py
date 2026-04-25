@@ -6,7 +6,7 @@ import logging
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from schemas.config import ExperimentConfig
+from ..schemas.config import ExperimentConfig
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from models import ResourcePool
+from ..models import ResourcePool
 
 
 def apply_resource_change(

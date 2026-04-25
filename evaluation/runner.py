@@ -9,9 +9,9 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
-from evaluation.ablations import AblationCondition, build_conditions
-from schemas.config import ExperimentConfig
-from schemas.episode import EpisodeResult, LogEvent
+from .ablations import AblationCondition, build_conditions
+from ..schemas.config import ExperimentConfig
+from ..schemas.episode import EpisodeResult, LogEvent
 
 _log = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
-from models import ActionUnion, CrisisState, EnvironmentMetadata, Observation
+from ..models import ActionUnion, CrisisState, EnvironmentMetadata, Observation
 
 
 @runtime_checkable

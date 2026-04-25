@@ -6,8 +6,8 @@ from math import exp
 
 import numpy as np
 
-from models import RegionState
-from server._internal import EpiParams
+from ..models import RegionState
+from ._internal import EpiParams
 
 
 def _advance_single_region(

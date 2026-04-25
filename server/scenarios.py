@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from models import Constraint, EnvConfig, ResourcePool
-from server._internal import EpiParams, ScenarioParams
+from ..models import Constraint, EnvConfig, ResourcePool
+from ._internal import EpiParams, ScenarioParams
 
 
 def generate_scenario(config: EnvConfig, seed: int) -> ScenarioParams:

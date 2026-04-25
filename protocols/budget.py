@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from schemas.budget import BudgetStatus
+from ..schemas.budget import BudgetStatus
 
 
 @runtime_checkable

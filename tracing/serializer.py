@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from schemas.episode import EpisodeTrace
+from ..schemas.episode import EpisodeTrace
 
 
 def save_trace(trace: EpisodeTrace, path: Path) -> Path:

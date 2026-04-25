@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from models import (
+from ..models import (
     Constraint,
     IncidentReport,
     Observation,
@@ -14,8 +14,8 @@ from models import (
     ResourcePool,
     StakeholderSignal,
     Telemetry,
+    BudgetStatusSnapshot
 )
-from models import BudgetStatusSnapshot
 
 
 def _noisy_count(true_val: int, rng: np.random.Generator, noise_scale: float = 0.2) -> int:

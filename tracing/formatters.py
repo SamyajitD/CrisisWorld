@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from schemas.episode import EpisodeTrace, TurnRecord
+from ..schemas.episode import EpisodeTrace, TurnRecord
 
 MAX_LINE_WIDTH = 100
 

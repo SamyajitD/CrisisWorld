@@ -230,6 +230,29 @@ class OuterAction(BaseAction):
 
     kind: str
 
+    #deploy-resources
+    resource: str | None = None
+    region_id: str | None = None
+    amount: int = None
+
+    #restrict-movement
+    level: int = None
+
+    #request-data
+    source: str | None = None
+
+    #public-communication
+    audience: str | None = None
+    message: str | None = None
+
+    #escalate
+    agency: str | None = None
+
+    #reallocate-budget
+    from_category: str | None = None
+    to_category: str | None = None
+
+
 
 class DeployResource(OuterAction):
     """Send resources to a region."""

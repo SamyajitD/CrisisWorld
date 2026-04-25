@@ -7,7 +7,7 @@ from typing import Any
 from openenv.core.client_types import StepResult
 from openenv.core.env_client import EnvClient
 
-from models import ActionUnion, CrisisState, Observation
+from .models import ActionUnion, CrisisState, Observation
 
 
 class CrisisWorldClient(EnvClient[ActionUnion, Observation, CrisisState]):

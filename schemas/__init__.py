@@ -5,7 +5,7 @@ from models.py for convenience.
 """
 
 # --- Agent-side types (canonical) ---
-from schemas.artifact import (
+from .artifact import (
     Artifact,
     BeliefState,
     CandidateAction,
@@ -15,17 +15,17 @@ from schemas.artifact import (
     Plan,
     RoleInput,
 )
-from schemas.budget import (
+from .budget import (
     BudgetExhaustedError,
     BudgetLedger,
     BudgetStatus,
     LedgerEntry,
 )
-from schemas.config import (
+from .config import (
     CortexConfig,
     ExperimentConfig,
 )
-from schemas.episode import (
+from .episode import (
     EpisodeResult,
     EpisodeTrace,
     LogEvent,
@@ -34,7 +34,7 @@ from schemas.episode import (
 )
 
 # --- Env-contract re-exports (canonical source: models.py) ---
-from models import (
+from ..models import (
     ActionUnion,
     BudgetStatusSnapshot,
     CompositeReward,

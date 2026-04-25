@@ -1,3 +1,13 @@
+---
+title: CrisisWorld + Cortex Environment Server
+emoji: 🔊
+sdk: docker
+pinned: false
+app_port: 8000
+base_path: /web
+tags:
+  - openenv
+---
 # CrisisWorld + Cortex
 
 An outbreak-control simulation environment paired with a budgeted structured reasoning agent.
@@ -22,13 +32,6 @@ The experiment compares two agent architectures:
 ```bash
 # Clone and enter project
 cd MetaFinals
-
-# Create venv and install
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev,server]"
-
-# Or with uv
 uv sync --extra dev --extra server
 ```
 
@@ -36,13 +39,13 @@ uv sync --extra dev --extra server
 
 ```bash
 # Single flat-agent episode
-python inference.py --agent flat --seed 42
+python CrisisWorld.inference.py --agent flat --seed 42
 
 # Single cortex-agent episode
-python inference.py --agent cortex --seed 42
+python CrisisWorld.inference.py --agent cortex --seed 42
 
 # Full ablation experiment (all 5 conditions)
-python inference.py --experiment configs/experiment_ablation.yaml
+python CrisisWorld.inference.py --experiment configs/experiment_ablation.yaml
 ```
 
 Results are saved to `results/comparison.md`. Traces go to `traces/`.

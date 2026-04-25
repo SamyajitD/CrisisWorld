@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from models import RegionState, ResourcePool
+from ..models import RegionState, ResourcePool
 
 
 def check_termination(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from schemas.artifact import CandidateAction, Plan, RoleInput
+from ...schemas.artifact import CandidateAction, Plan, RoleInput
 
 _DEFAULT_MAX_CANDIDATES = 3
 

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from schemas.artifact import Critique, RoleInput
+from ...schemas.artifact import Critique, RoleInput
+
 
 _BASE_RISK = 0.1
 

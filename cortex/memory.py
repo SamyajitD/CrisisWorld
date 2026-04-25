@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from schemas.artifact import Artifact
-from schemas.episode import MemoryDigest
+from ..schemas.artifact import Artifact
+from ..schemas.episode import MemoryDigest
 
 
 class EpisodeMemory:

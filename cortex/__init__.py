@@ -1,8 +1,8 @@
 """Cortex deliberation system — structured multi-role reasoning."""
 
-from cortex.budget import BudgetTracker
-from cortex.deliberator import CortexDeliberator, DeliberationLog
-from cortex.memory import EpisodeMemory
+from .budget import BudgetTracker
+from .deliberator import CortexDeliberator, DeliberationLog
+from .memory import EpisodeMemory
 
 __all__ = [
     "BudgetTracker",

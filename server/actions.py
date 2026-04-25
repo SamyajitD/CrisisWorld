@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from models import (
+from ..models import (
     DeployResource,
     Escalate,
     NoOp,
@@ -14,7 +14,7 @@ from models import (
     RequestData,
     RestrictMovement,
 )
-from server._internal import InternalState, ScheduledEffect
+from ._internal import InternalState, ScheduledEffect
 
 
 def _region_exists(region_id: str, state: InternalState) -> bool:

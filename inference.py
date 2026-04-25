@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import uuid
 from pathlib import Path
 from typing import Any
@@ -17,25 +18,25 @@ from typing import Any
 import numpy as np
 import yaml
 
-from agents.cortex_agent import CortexAgent
-from agents.flat import FlatAgent
-from cortex.budget import BudgetTracker
-from cortex.deliberator import CortexDeliberator
-from cortex.memory import EpisodeMemory, NullMemory
-from cortex.roles import (
+from CrisisWorld.agents.cortex_agent import CortexAgent
+from CrisisWorld.agents.flat import FlatAgent
+from CrisisWorld.cortex.budget import BudgetTracker
+from CrisisWorld.cortex.deliberator import CortexDeliberator
+from CrisisWorld.cortex.memory import EpisodeMemory, NullMemory
+from CrisisWorld.cortex.roles import (
     CriticRole,
     ExecutiveRole,
     PerceptionRole,
     PlannerRole,
     WorldModelerRole,
 )
-from evaluation.ablations import build_conditions
-from evaluation.analysis import comparison_table, diagnostic_report
-from evaluation.runner import ExperimentRunner
-from models import EnvConfig
-from schemas.config import CortexConfig, ExperimentConfig
-from server import CrisisWorld
-from tracing.tracer import EpisodeTracer
+from CrisisWorld.evaluation.ablations import build_conditions
+from CrisisWorld.evaluation.analysis import comparison_table, diagnostic_report
+from CrisisWorld.evaluation.runner import ExperimentRunner
+from CrisisWorld.models import EnvConfig
+from CrisisWorld.schemas.config import CortexConfig, ExperimentConfig
+from CrisisWorld.tracing.tracer import EpisodeTracer
+from CrisisWorld.server import CrisisWorld as CrisisWorldEnvironment
 
 logging.basicConfig(
     level=logging.INFO,
@@ -45,6 +46,7 @@ logger = logging.getLogger(__name__)
 
 TRACE_DIR = Path("traces")
 RESULT_DIR = Path("results")
+HF_SPACE_URL = os.getenv("ENV_URL", "https://surajk21-crisis-world.hf.space")
 
 
 # ---------------------------------------------------------------------------
@@ -52,8 +54,8 @@ RESULT_DIR = Path("results")
 # ---------------------------------------------------------------------------
 
 
-def _make_env(config: EnvConfig) -> CrisisWorld:
-    return CrisisWorld(config=config)
+def _make_env(config: EnvConfig) -> CrisisWorldEnvironment:
+    return CrisisWorldEnvironment(config=config)
 
 
 def _make_flat_agent(config: EnvConfig, seed: int, fat_mode: bool = False) -> FlatAgent:

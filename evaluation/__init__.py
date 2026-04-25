@@ -1,24 +1,24 @@
 """Evaluation — experiment orchestration and analysis."""
 
-from evaluation.ablations import (
+from .ablations import (
     AblationCondition,
     build_conditions,
     get_low_budget,
     get_matched_budget,
 )
-from evaluation.analysis import (
+from .analysis import (
     comparison_table,
     diagnostic_report,
     significance_summary,
 )
-from evaluation.metrics import (
+from .metrics import (
     AggregateMetrics,
     EpisodeMetrics,
     aggregate_metrics,
     collect_episode_metrics,
     compute_confidence_interval,
 )
-from evaluation.runner import ExperimentResults, ExperimentRunner
+from .runner import ExperimentResults, ExperimentRunner
 
 __all__ = [
     "AblationCondition",

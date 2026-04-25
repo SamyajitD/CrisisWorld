@@ -8,7 +8,7 @@ import statistics
 from pydantic import BaseModel, ConfigDict, Field
 from scipy.stats import t as t_dist
 
-from schemas.episode import EpisodeTrace
+from ..schemas.episode import EpisodeTrace
 
 
 class EpisodeMetrics(BaseModel):

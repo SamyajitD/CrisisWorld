@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from models import Constraint, RegionState, ResourcePool
+from ..models import Constraint, RegionState, ResourcePool
 
 
 class EpiParams(BaseModel):
