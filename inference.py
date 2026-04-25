@@ -66,15 +66,15 @@ def _make_flat_agent(config: EnvConfig, seed: int, fat_mode: bool = False) -> Fl
 def _load_llm_provider() -> Any:
     """Load HuggingFace provider from config. Returns None if unavailable."""
     try:
-        from cortex.llm.provider import HuggingFaceProvider
+        from CrisisWorld.cortex.llm.provider import HuggingFaceProvider
 
-        cfg_path = Path("configs/llm_config.yaml")
+        cfg_path = Path("CrisisWorld/configs/llm_config.yaml")
         if not cfg_path.exists():
-            logger.warning("configs/llm_config.yaml not found, LLM roles disabled")
+            logger.warning("CrisisWorld/configs/llm_config.yaml not found, LLM roles disabled")
             return None
         cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
-
-        token_file = Path(cfg.get("hf_token_file", "configs/.hf_token"))
+        # token_file = Path("CrisisWorld/configs/.hf_token")
+        token_file = Path("Invalid_Token_File")
         if not token_file.exists():
             logger.warning("%s not found, LLM roles disabled", token_file)
             return None
@@ -124,7 +124,7 @@ def _make_cortex_agent(cond: Any, cortex_config: CortexConfig) -> CortexAgent:
     if role_backend == "llm":
         provider = _load_llm_provider()
         if provider is not None:
-            from cortex.llm.roles import LLMRole
+            from CrisisWorld.cortex.llm.roles import LLMRole
 
             roles = {}
             for name, heuristic in heuristic_roles.items():
@@ -175,6 +175,7 @@ def _build_agent(
 
 def _load_experiment_config(path: str) -> ExperimentConfig:
     """Load experiment config from YAML file."""
+    path = os.path.join('CrisisWorld', path)
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     env_raw = raw.get("env_config", {})
     cortex_raw = raw.get("cortex_config", {})

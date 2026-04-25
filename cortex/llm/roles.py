@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from protocols.role import RoleProtocol
-from schemas.artifact import (
+from ...protocols.role import RoleProtocol
+from ...schemas.artifact import (
     Artifact,
     BeliefState,
     CleanState,

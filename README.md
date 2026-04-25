@@ -36,16 +36,16 @@ uv sync --extra dev --extra server
 ```
 
 ## Running
-
+Test the inference.py outside CrisisWorld directory
 ```bash
 # Single flat-agent episode
-python CrisisWorld.inference.py --agent flat --seed 42
+python -m CrisisWorld.inference --agent flat --seed 42
 
 # Single cortex-agent episode
-python CrisisWorld.inference.py --agent cortex --seed 42
+python -m CrisisWorld.inference --agent cortex --seed 42
 
 # Full ablation experiment (all 5 conditions)
-python CrisisWorld.inference.py --experiment configs/experiment_ablation.yaml
+python -m CrisisWorld.inference --experiment configs/experiment_ablation.yaml
 ```
 
 Results are saved to `results/comparison.md`. Traces go to `traces/`.
