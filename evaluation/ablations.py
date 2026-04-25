@@ -35,6 +35,7 @@ class AblationCondition(BaseModel):
     memory_enabled: bool = False
     critic_enabled: bool = False
     tuned_executive: bool = False
+    role_backend: str = "heuristic"  # "heuristic" or "llm"
 
 
 def get_matched_budget(config: ExperimentConfig) -> int:
@@ -88,6 +89,15 @@ def _make_all_conditions(
             memory_enabled=True,
             critic_enabled=True,
             tuned_executive=True,
+        ),
+        "cortex-llm": AblationCondition(
+            name="cortex-llm",
+            agent_type="cortex",
+            budget=matched,
+            enabled_roles=_ALL_ROLES,
+            memory_enabled=True,
+            critic_enabled=True,
+            role_backend="llm",
         ),
     }
 

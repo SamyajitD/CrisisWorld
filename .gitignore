@@ -1,6 +1,7 @@
 traces/
 results/
 .env
+configs/.hf_token
 __pycache__/
 *.pyc
 .venv/

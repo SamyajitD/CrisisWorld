@@ -61,6 +61,38 @@ def _make_flat_agent(config: EnvConfig, seed: int, fat_mode: bool = False) -> Fl
     return FlatAgent(config=config, rng=rng, fat_mode=fat_mode)
 
 
+def _load_llm_provider() -> Any:
+    """Load HuggingFace provider from config. Returns None if unavailable."""
+    try:
+        from cortex.llm.provider import HuggingFaceProvider
+
+        cfg_path = Path("configs/llm_config.yaml")
+        if not cfg_path.exists():
+            logger.warning("configs/llm_config.yaml not found, LLM roles disabled")
+            return None
+        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+
+        token_file = Path(cfg.get("hf_token_file", "configs/.hf_token"))
+        if not token_file.exists():
+            logger.warning("%s not found, LLM roles disabled", token_file)
+            return None
+        api_key = token_file.read_text(encoding="utf-8").strip()
+
+        default_model_key = cfg.get("default_model", "mistral-7b")
+        model_cfg = cfg.get("models", {}).get(default_model_key, {})
+        model_name = model_cfg.get("name", "mistralai/Mistral-7B-Instruct-v0.3")
+        max_tokens = model_cfg.get("max_tokens", 1024)
+        temperature = model_cfg.get("temperature", 0.1)
+
+        return HuggingFaceProvider(
+            api_key=api_key, model=model_name,
+            max_tokens=max_tokens, temperature=temperature,
+        )
+    except Exception as exc:
+        logger.warning("Failed to load LLM provider: %s", exc)
+        return None
+
+
 def _make_cortex_agent(cond: Any, cortex_config: CortexConfig) -> CortexAgent:
     """Build CortexAgent configured per the AblationCondition."""
     all_role_map = {
@@ -74,14 +106,34 @@ def _make_cortex_agent(cond: Any, cortex_config: CortexConfig) -> CortexAgent:
     enabled = set(cond.enabled_roles) if hasattr(cond, "enabled_roles") else set(all_role_map.keys())
     enabled.add("perception")
     enabled.add("executive")
-    roles = {}
+
+    # Build heuristic roles first (used as-is or as fallbacks)
+    heuristic_roles: dict[str, Any] = {}
     for name, cls in all_role_map.items():
         if name not in enabled:
             continue
         if name == "executive" and getattr(cond, "tuned_executive", False):
-            roles[name] = cls(risk_threshold=0.2)
+            heuristic_roles[name] = cls(risk_threshold=0.2)
         else:
-            roles[name] = cls()
+            heuristic_roles[name] = cls()
+
+    # Wire LLM roles if backend is "llm"
+    role_backend = getattr(cond, "role_backend", "heuristic")
+    if role_backend == "llm":
+        provider = _load_llm_provider()
+        if provider is not None:
+            from cortex.llm.roles import LLMRole
+
+            roles = {}
+            for name, heuristic in heuristic_roles.items():
+                roles[name] = LLMRole(name=name, provider=provider, fallback=heuristic)
+            logger.info("Using LLM roles (%s) for condition %s",
+                        provider.model_name, getattr(cond, "name", "?"))
+        else:
+            logger.warning("LLM provider unavailable, falling back to heuristic roles")
+            roles = heuristic_roles
+    else:
+        roles = heuristic_roles
 
     memory = EpisodeMemory() if getattr(cond, "memory_enabled", True) else NullMemory()
     ep_logger = EpisodeTracer(episode_id="pending")
