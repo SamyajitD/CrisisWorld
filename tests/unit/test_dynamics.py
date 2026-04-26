@@ -5,9 +5,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from models import RegionState
-from server._internal import EpiParams
-from server.dynamics import advance_epi_state
+from CrisisWorld.models import RegionState
+from CrisisWorld.server._internal import EpiParams
+from CrisisWorld.server.dynamics import advance_epi_state
 
 
 # ---------------------------------------------------------------------------

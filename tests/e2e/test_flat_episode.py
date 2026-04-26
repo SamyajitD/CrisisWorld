@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from agents.flat import FlatAgent
-from models import EnvConfig, NoOp
-from server import CrisisWorld
+from CrisisWorld.agents.flat import FlatAgent
+from CrisisWorld.models import EnvConfig, NoOp
+from CrisisWorld.server import CrisisWorld
 
 
 class TestFlatEpisode:

@@ -8,10 +8,10 @@ from typing import Any
 
 import pytest
 
-from models import BudgetStatusSnapshot, NoOp, Observation, OuterAction, RegionState, ResourcePool, Telemetry
-from models import CompositeReward, RewardComponents
-from schemas.config import ExperimentConfig
-from schemas.episode import EpisodeResult, EpisodeTrace, LogEvent, TurnRecord
+from CrisisWorld.models import BudgetStatusSnapshot, NoOp, Observation, OuterAction, RegionState, ResourcePool, Telemetry
+from CrisisWorld.models import CompositeReward, RewardComponents
+from CrisisWorld.schemas.config import ExperimentConfig
+from CrisisWorld.schemas.episode import EpisodeResult, EpisodeTrace, LogEvent, TurnRecord
 
 # ---------------------------------------------------------------------------
 # Helpers: fake factories for runner tests
@@ -121,7 +121,7 @@ class FakeLogger:
 
 class TestAblations:
     def test_build_conditions_returns_five(self) -> None:
-        from evaluation.ablations import build_conditions
+        from CrisisWorld.evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -145,7 +145,7 @@ class TestAblations:
         }
 
     def test_flat_conditions_have_no_roles(self) -> None:
-        from evaluation.ablations import build_conditions
+        from CrisisWorld.evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -157,7 +157,7 @@ class TestAblations:
             assert c.memory_enabled is False
 
     def test_cortex_full_has_all_roles_and_memory(self) -> None:
-        from evaluation.ablations import build_conditions
+        from CrisisWorld.evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -171,7 +171,7 @@ class TestAblations:
         assert c.critic_enabled is True
 
     def test_matched_budget_conditions_share_budget(self) -> None:
-        from evaluation.ablations import build_conditions
+        from CrisisWorld.evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -182,7 +182,7 @@ class TestAblations:
         assert len(budgets) == 1  # all share same matched budget
 
     def test_low_budget_conditions_share_budget(self) -> None:
-        from evaluation.ablations import build_conditions
+        from CrisisWorld.evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -193,7 +193,7 @@ class TestAblations:
         assert len(budgets) == 1  # all share same low budget
 
     def test_build_conditions_with_subset_filter(self) -> None:
-        from evaluation.ablations import build_conditions
+        from CrisisWorld.evaluation.ablations import build_conditions
 
         config = ExperimentConfig(
             seeds=(42,),
@@ -212,7 +212,7 @@ class TestAblations:
 
 class TestMetrics:
     def test_collect_episode_metrics_primary_values(self) -> None:
-        from evaluation.metrics import collect_episode_metrics
+        from CrisisWorld.evaluation.metrics import collect_episode_metrics
 
         trace = EpisodeTrace(
             episode_id="m1",
@@ -235,7 +235,7 @@ class TestMetrics:
         assert abs(m.total_cumulative_reward - 0.3) < 1e-9
 
     def test_collect_episode_metrics_handles_missing_info(self) -> None:
-        from evaluation.metrics import collect_episode_metrics
+        from CrisisWorld.evaluation.metrics import collect_episode_metrics
 
         trace = EpisodeTrace(
             episode_id="m2",
@@ -247,7 +247,7 @@ class TestMetrics:
         assert m.role_call_frequency == {}
 
     def test_aggregate_metrics_mean_and_std(self) -> None:
-        from evaluation.metrics import (
+        from CrisisWorld.evaluation.metrics import (
             EpisodeMetrics,
             aggregate_metrics,
         )
@@ -265,7 +265,7 @@ class TestMetrics:
         assert abs(agg.std_reward - 10.0) < 1e-9
 
     def test_aggregate_metrics_empty_list_returns_nan(self) -> None:
-        from evaluation.metrics import aggregate_metrics
+        from CrisisWorld.evaluation.metrics import aggregate_metrics
 
         agg = aggregate_metrics([])
         assert agg.n == 0
@@ -288,7 +288,7 @@ class TestRunner:
     def test_run_single_seed_single_condition(
         self, tmp_path: Any
     ) -> None:
-        from evaluation.runner import ExperimentRunner
+        from CrisisWorld.evaluation.runner import ExperimentRunner
 
         config = self._make_config()
         runner = ExperimentRunner(
@@ -302,7 +302,7 @@ class TestRunner:
         assert len(results.conditions["flat-lite"]) == 1
 
     def test_run_multi_seed_produces_correct_count(self) -> None:
-        from evaluation.runner import ExperimentRunner
+        from CrisisWorld.evaluation.runner import ExperimentRunner
 
         config = self._make_config(seeds=(42, 43, 44))
         runner = ExperimentRunner(
@@ -315,7 +315,7 @@ class TestRunner:
         assert len(results.conditions["flat-lite"]) == 3
 
     def test_run_all_conditions_produces_five_results(self) -> None:
-        from evaluation.runner import ExperimentRunner
+        from CrisisWorld.evaluation.runner import ExperimentRunner
 
         config = self._make_config(
             conditions=(
@@ -336,7 +336,7 @@ class TestRunner:
         assert len(results.conditions) == 5
 
     def test_run_episode_returns_correct_turn_count(self) -> None:
-        from evaluation.runner import ExperimentRunner
+        from CrisisWorld.evaluation.runner import ExperimentRunner
 
         config = self._make_config()
         runner = ExperimentRunner(
@@ -353,7 +353,7 @@ class TestRunner:
         assert result.total_turns == 5
 
     def test_run_episode_carries_condition_name(self) -> None:
-        from evaluation.runner import ExperimentRunner
+        from CrisisWorld.evaluation.runner import ExperimentRunner
 
         config = self._make_config()
         runner = ExperimentRunner(
@@ -371,7 +371,7 @@ class TestRunner:
     def test_episode_crash_is_logged_and_skipped(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
-        from evaluation.runner import ExperimentRunner
+        from CrisisWorld.evaluation.runner import ExperimentRunner
 
         call_count = 0
 
@@ -399,7 +399,7 @@ class TestRunner:
         assert len(episodes) == 1
 
     def test_env_close_called_even_on_crash(self) -> None:
-        from evaluation.runner import ExperimentRunner
+        from CrisisWorld.evaluation.runner import ExperimentRunner
 
         close_calls: list[bool] = []
 
@@ -430,7 +430,7 @@ class TestRunner:
 class TestAnalysis:
     def _make_results(self) -> Any:
         """Build ExperimentResults with two conditions."""
-        from evaluation.runner import ExperimentResults
+        from CrisisWorld.evaluation.runner import ExperimentResults
 
         return ExperimentResults(
             conditions={
@@ -500,7 +500,7 @@ class TestAnalysis:
         )
 
     def test_comparison_table_format(self) -> None:
-        from evaluation.analysis import comparison_table
+        from CrisisWorld.evaluation.analysis import comparison_table
 
         results = self._make_results()
         table = comparison_table(results)
@@ -509,8 +509,8 @@ class TestAnalysis:
         assert "cortex-full" in table
 
     def test_comparison_table_nan_shows_na(self) -> None:
-        from evaluation.analysis import comparison_table
-        from evaluation.runner import ExperimentResults
+        from CrisisWorld.evaluation.analysis import comparison_table
+        from CrisisWorld.evaluation.runner import ExperimentResults
 
         results = ExperimentResults(
             conditions={
@@ -521,7 +521,7 @@ class TestAnalysis:
         assert "N/A" in table
 
     def test_diagnostic_report_skips_flat(self) -> None:
-        from evaluation.analysis import diagnostic_report
+        from CrisisWorld.evaluation.analysis import diagnostic_report
 
         results = self._make_results()
         report = diagnostic_report(results)
@@ -531,7 +531,7 @@ class TestAnalysis:
         )[-1].split("cortex")[0]
 
     def test_significance_summary_non_overlapping_ci(self) -> None:
-        from evaluation.analysis import significance_summary
+        from CrisisWorld.evaluation.analysis import significance_summary
 
         results = self._make_results()
         summary = significance_summary(results)
@@ -541,8 +541,8 @@ class TestAnalysis:
         assert "cortex-full" in summary
 
     def test_significance_summary_single_condition(self) -> None:
-        from evaluation.analysis import significance_summary
-        from evaluation.runner import ExperimentResults
+        from CrisisWorld.evaluation.analysis import significance_summary
+        from CrisisWorld.evaluation.runner import ExperimentResults
 
         results = ExperimentResults(
             conditions={

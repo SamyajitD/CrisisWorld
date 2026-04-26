@@ -8,19 +8,19 @@ from typing import Any
 import numpy as np
 import pytest
 
-from cortex.budget import BudgetTracker
-from cortex.deliberator import CortexDeliberator
-from cortex.memory import EpisodeMemory
-from cortex.roles import (
+from CrisisWorld.cortex.budget import BudgetTracker
+from CrisisWorld.cortex.deliberator import CortexDeliberator
+from CrisisWorld.cortex.memory import EpisodeMemory
+from CrisisWorld.cortex.roles import (
     CriticRole,
     ExecutiveRole,
     PerceptionRole,
     PlannerRole,
     WorldModelerRole,
 )
-from models import BudgetStatusSnapshot, Escalate, NoOp, Observation, RegionState, ResourcePool, Telemetry
-from schemas.episode import LogEvent
-from tracing.tracer import EpisodeTracer
+from CrisisWorld.models import BudgetStatusSnapshot, Escalate, NoOp, Observation, RegionState, ResourcePool, Telemetry
+from CrisisWorld.schemas.episode import LogEvent
+from CrisisWorld.tracing.tracer import EpisodeTracer
 
 def _make_obs(turn: int = 0, infected: int = 50) -> Observation:
     return Observation(

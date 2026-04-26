@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from models import Observation, OuterAction
-from schemas.artifact import Artifact, CleanState, RoleInput
-from schemas.budget import BudgetStatus
-from schemas.episode import LogEvent, MemoryDigest
+from CrisisWorld.models import Observation, OuterAction
+from CrisisWorld.schemas.artifact import Artifact, CleanState, RoleInput
+from CrisisWorld.schemas.budget import BudgetStatus
+from CrisisWorld.schemas.episode import LogEvent, MemoryDigest
 
 
 # ---------------------------------------------------------------------------
@@ -36,19 +36,19 @@ class _MissingStep:
 
 
 def test_env_protocol_structural_subtyping() -> None:
-    from protocols.env import EnvProtocol
+    from CrisisWorld.protocols.env import EnvProtocol
 
     assert isinstance(_ValidEnv(), EnvProtocol)
 
 
 def test_env_protocol_rejects_incomplete_impl() -> None:
-    from protocols.env import EnvProtocol
+    from CrisisWorld.protocols.env import EnvProtocol
 
     assert not isinstance(_MissingStep(), EnvProtocol)
 
 
 def test_env_protocol_rejects_unrelated_object() -> None:
-    from protocols.env import EnvProtocol
+    from CrisisWorld.protocols.env import EnvProtocol
 
     assert not isinstance("not an env", EnvProtocol)
     assert not isinstance(42, EnvProtocol)
@@ -72,19 +72,19 @@ class _AgentMissingAct:
 
 
 def test_agent_protocol_structural_subtyping() -> None:
-    from protocols.agent import AgentProtocol
+    from CrisisWorld.protocols.agent import AgentProtocol
 
     assert isinstance(_ValidAgent(), AgentProtocol)
 
 
 def test_agent_protocol_rejects_missing_reset() -> None:
-    from protocols.agent import AgentProtocol
+    from CrisisWorld.protocols.agent import AgentProtocol
 
     assert not isinstance(_AgentMissingReset(), AgentProtocol)
 
 
 def test_agent_protocol_rejects_missing_act() -> None:
-    from protocols.agent import AgentProtocol
+    from CrisisWorld.protocols.agent import AgentProtocol
 
     assert not isinstance(_AgentMissingAct(), AgentProtocol)
 
@@ -123,19 +123,19 @@ class _RolePlainAttrs:
 
 
 def test_role_protocol_structural_subtyping() -> None:
-    from protocols.role import RoleProtocol
+    from CrisisWorld.protocols.role import RoleProtocol
 
     assert isinstance(_ValidRole(), RoleProtocol)
 
 
 def test_role_protocol_rejects_missing_invoke() -> None:
-    from protocols.role import RoleProtocol
+    from CrisisWorld.protocols.role import RoleProtocol
 
     assert not isinstance(_RoleMissingInvoke(), RoleProtocol)
 
 
 def test_role_protocol_accepts_plain_attributes() -> None:
-    from protocols.role import RoleProtocol
+    from CrisisWorld.protocols.role import RoleProtocol
 
     assert isinstance(_RolePlainAttrs(), RoleProtocol)
 
@@ -164,19 +164,19 @@ class _BudgetMissingReset:
 
 
 def test_budget_protocol_structural_subtyping() -> None:
-    from protocols.budget import BudgetProtocol
+    from CrisisWorld.protocols.budget import BudgetProtocol
 
     assert isinstance(_ValidBudget(), BudgetProtocol)
 
 
 def test_budget_protocol_rejects_missing_charge() -> None:
-    from protocols.budget import BudgetProtocol
+    from CrisisWorld.protocols.budget import BudgetProtocol
 
     assert not isinstance(_BudgetMissingCharge(), BudgetProtocol)
 
 
 def test_budget_protocol_rejects_missing_reset() -> None:
-    from protocols.budget import BudgetProtocol
+    from CrisisWorld.protocols.budget import BudgetProtocol
 
     assert not isinstance(_BudgetMissingReset(), BudgetProtocol)
 
@@ -205,19 +205,19 @@ class _MemoryMissingClear:
 
 
 def test_memory_protocol_structural_subtyping() -> None:
-    from protocols.memory import MemoryProtocol
+    from CrisisWorld.protocols.memory import MemoryProtocol
 
     assert isinstance(_ValidMemory(), MemoryProtocol)
 
 
 def test_memory_protocol_rejects_missing_store() -> None:
-    from protocols.memory import MemoryProtocol
+    from CrisisWorld.protocols.memory import MemoryProtocol
 
     assert not isinstance(_MemoryMissingStore(), MemoryProtocol)
 
 
 def test_memory_protocol_rejects_missing_clear() -> None:
-    from protocols.memory import MemoryProtocol
+    from CrisisWorld.protocols.memory import MemoryProtocol
 
     assert not isinstance(_MemoryMissingClear(), MemoryProtocol)
 
@@ -243,18 +243,18 @@ class _LoggerMissingFlush:
 
 
 def test_logger_protocol_structural_subtyping() -> None:
-    from protocols.logger import LoggerProtocol
+    from CrisisWorld.protocols.logger import LoggerProtocol
 
     assert isinstance(_ValidLogger(), LoggerProtocol)
 
 
 def test_logger_protocol_rejects_missing_save() -> None:
-    from protocols.logger import LoggerProtocol
+    from CrisisWorld.protocols.logger import LoggerProtocol
 
     assert not isinstance(_LoggerMissingSave(), LoggerProtocol)
 
 
 def test_logger_protocol_rejects_missing_flush() -> None:
-    from protocols.logger import LoggerProtocol
+    from CrisisWorld.protocols.logger import LoggerProtocol
 
     assert not isinstance(_LoggerMissingFlush(), LoggerProtocol)

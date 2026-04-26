@@ -159,11 +159,18 @@ def _build_agent(
     env_config: EnvConfig,
     cortex_config: CortexConfig,
     seed: int,
-) -> FlatAgent | CortexAgent:
+) -> Any:
     """Build the right agent based on the condition's agent_type."""
     agent_type = getattr(cond, "agent_type", "flat")
     if agent_type == "cortex":
         return _make_cortex_agent(cond, cortex_config)
+    if agent_type == "single_llm":
+        provider = _load_llm_provider()
+        if provider is not None:
+            from agents.single_llm import SingleLLMAgent
+            return SingleLLMAgent(provider=provider)
+        logger.warning("LLM unavailable for single_llm, falling back to flat")
+        return _make_flat_agent(env_config, seed)
     fat_mode = "fat" in getattr(cond, "name", "")
     return _make_flat_agent(env_config, seed, fat_mode=fat_mode)
 

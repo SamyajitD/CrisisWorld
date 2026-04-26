@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from tracing.serializer import load_trace, save_trace
-from schemas.episode import EpisodeTrace, LogEvent, TurnRecord
+from CrisisWorld.tracing.serializer import load_trace, save_trace
+from CrisisWorld.schemas.episode import EpisodeTrace, LogEvent, TurnRecord
 
 
 def _make_trace(episode_id: str = "ep-ser") -> EpisodeTrace:

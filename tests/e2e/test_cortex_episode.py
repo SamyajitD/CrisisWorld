@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from agents.cortex_agent import CortexAgent
-from cortex.budget import BudgetTracker
-from cortex.deliberator import CortexDeliberator
-from cortex.memory import EpisodeMemory
-from cortex.roles import (
+from CrisisWorld.agents.cortex_agent import CortexAgent
+from CrisisWorld.cortex.budget import BudgetTracker
+from CrisisWorld.cortex.deliberator import CortexDeliberator
+from CrisisWorld.cortex.memory import EpisodeMemory
+from CrisisWorld.cortex.roles import (
     CriticRole,
     ExecutiveRole,
     PerceptionRole,
     PlannerRole,
     WorldModelerRole,
 )
-from models import EnvConfig
-from server import CrisisWorld
-from tracing.tracer import EpisodeTracer
+from CrisisWorld.models import EnvConfig
+from CrisisWorld.server import CrisisWorld
+from CrisisWorld.tracing.tracer import EpisodeTracer
 
 
 def _make_cortex_agent(budget_total: int = 50) -> CortexAgent:

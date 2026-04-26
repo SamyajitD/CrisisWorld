@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from models import CrisisState, EnvConfig, NoOp
+from CrisisWorld.models import CrisisState, EnvConfig, NoOp
 
 
 class TestCrisisWorld:
     def _make_env(self, **kwargs):
-        from server.CrisisWorld_environment import CrisisWorld
+        from CrisisWorld.server.CrisisWorld_environment import CrisisWorld
         return CrisisWorld(config=EnvConfig(**kwargs))
 
     def test_reset_returns_valid_observation(self) -> None:

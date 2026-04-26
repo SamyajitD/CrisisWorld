@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from schemas.budget import BudgetExhaustedError, BudgetStatus
+from CrisisWorld.schemas.budget import BudgetExhaustedError, BudgetStatus
 
 
 # ---------------------------------------------------------------------------
@@ -14,7 +14,7 @@ from schemas.budget import BudgetExhaustedError, BudgetStatus
 
 class TestBudgetTracker:
     def _make(self, total: int = 10):
-        from cortex.budget import BudgetTracker
+        from CrisisWorld.cortex.budget import BudgetTracker
         return BudgetTracker(total)
 
     def test_initial_state_reflects_total(self) -> None:
@@ -126,11 +126,11 @@ class TestBudgetTracker:
 
 class TestEpisodeMemory:
     def _make(self):
-        from cortex.memory import EpisodeMemory
+        from CrisisWorld.cortex.memory import EpisodeMemory
         return EpisodeMemory()
 
     def _artifact(self):
-        from schemas.artifact import CleanState
+        from CrisisWorld.schemas.artifact import CleanState
         return CleanState()
 
     def test_store_and_retrieve_single(self) -> None:

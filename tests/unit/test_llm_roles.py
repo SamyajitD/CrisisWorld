@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cortex.llm.provider import HuggingFaceProvider
-from cortex.llm.prompts import ROLE_PROMPTS, _summarize_obs
-from schemas.artifact import CleanState, BeliefState, Plan, Critique, ExecutiveDecision
+from CrisisWorld.cortex.llm.provider import HuggingFaceProvider
+from CrisisWorld.cortex.llm.prompts import ROLE_PROMPTS, _summarize_obs
+from CrisisWorld.schemas.artifact import CleanState, BeliefState, Plan, Critique, ExecutiveDecision
 
 
 # ---------------------------------------------------------------------------
@@ -20,7 +20,7 @@ from schemas.artifact import CleanState, BeliefState, Plan, Critique, ExecutiveD
 class TestJsonExtraction:
     def _extractor(self) -> HuggingFaceProvider:
         """Create a provider with a fake key (we only test _extract_json)."""
-        with patch("cortex.llm.provider.InferenceClient"):
+        with patch("CrisisWorld.cortex.llm.provider.InferenceClient"):
             return HuggingFaceProvider(api_key="fake", model="test")
 
     def test_simple_json(self) -> None:
@@ -83,7 +83,7 @@ class TestJsonExtraction:
 
 class TestLLMRole:
     def _make_role(self, name: str, return_json: dict | Exception):
-        from cortex.llm.roles import LLMRole
+        from CrisisWorld.cortex.llm.roles import LLMRole
 
         provider = MagicMock(spec=HuggingFaceProvider)
         provider.total_fallbacks = 0
@@ -105,7 +105,7 @@ class TestLLMRole:
             "flagged_anomalies": [],
             "cleaned_observation": {"turn": 1},
         })
-        from schemas.artifact import RoleInput
+        from CrisisWorld.schemas.artifact import RoleInput
         result = role.invoke(RoleInput(role_name="perception", payload={"observation": {}}))
         assert isinstance(result, CleanState)
 
@@ -115,7 +115,7 @@ class TestLLMRole:
                 {"action": {"kind": "noop"}, "rationale": "wait", "expected_effect": "none", "confidence": 0.5},
             ],
         })
-        from schemas.artifact import RoleInput
+        from CrisisWorld.schemas.artifact import RoleInput
         result = role.invoke(RoleInput(role_name="planner", payload={"belief_state": {}}))
         assert isinstance(result, Plan)
         assert len(result.candidates) == 1
@@ -126,14 +126,14 @@ class TestLLMRole:
             "target_action": {"kind": "noop"},
             "reasoning": "budget low",
         })
-        from schemas.artifact import RoleInput
+        from CrisisWorld.schemas.artifact import RoleInput
         result = role.invoke(RoleInput(role_name="executive", payload={"artifacts": [], "budget_status": {}}))
         assert isinstance(result, ExecutiveDecision)
         assert result.decision == "act"
 
     def test_fallback_on_api_error(self) -> None:
         role, provider, fallback = self._make_role("perception", RuntimeError("API down"))
-        from schemas.artifact import RoleInput
+        from CrisisWorld.schemas.artifact import RoleInput
         result = role.invoke(RoleInput(role_name="perception", payload={"observation": {}}))
         fallback.invoke.assert_called_once()
         assert provider.total_fallbacks == 1
@@ -141,13 +141,13 @@ class TestLLMRole:
     def test_fallback_on_invalid_json(self) -> None:
         # Critic requires risk_score (0-1). Passing 5.0 will fail validation.
         role, provider, fallback = self._make_role("critic", {"risk_score": 5.0})
-        from schemas.artifact import RoleInput
+        from CrisisWorld.schemas.artifact import RoleInput
         result = role.invoke(RoleInput(role_name="critic", payload={"candidate": {}, "belief_state": {}}))
         fallback.invoke.assert_called_once()  # Pydantic validation fails -> fallback
         assert provider.total_fallbacks == 1
 
     def test_cost_matches_expected(self) -> None:
-        from cortex.llm.roles import LLMRole, _ROLE_COSTS
+        from CrisisWorld.cortex.llm.roles import LLMRole, _ROLE_COSTS
         for name, expected_cost in _ROLE_COSTS.items():
             role, _, _ = self._make_role(name, {})
             assert role.cost == expected_cost
@@ -157,14 +157,14 @@ class TestLLMRole:
         assert role.role_name == "critic"
 
     def test_invalid_role_name_raises(self) -> None:
-        from cortex.llm.roles import LLMRole
+        from CrisisWorld.cortex.llm.roles import LLMRole
         provider = MagicMock(spec=HuggingFaceProvider)
         fallback = MagicMock()
         with pytest.raises(ValueError, match="Unknown role"):
             LLMRole(name="nonexistent", provider=provider, fallback=fallback)
 
     def test_all_roles_in_protocol(self) -> None:
-        from protocols.role import RoleProtocol
+        from CrisisWorld.protocols.role import RoleProtocol
         for name in ROLE_PROMPTS:
             role, _, _ = self._make_role(name, {})
             assert isinstance(role, RoleProtocol)
@@ -216,7 +216,7 @@ class TestProviderConstruction:
             HuggingFaceProvider(api_key="")
 
     def test_reset_stats(self) -> None:
-        with patch("cortex.llm.provider.InferenceClient"):
+        with patch("CrisisWorld.cortex.llm.provider.InferenceClient"):
             p = HuggingFaceProvider(api_key="fake", model="test")
             p.total_calls = 10
             p.total_fallbacks = 3

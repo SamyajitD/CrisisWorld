@@ -99,6 +99,12 @@ def _make_all_conditions(
             critic_enabled=True,
             role_backend="llm",
         ),
+        "single-llm": AblationCondition(
+            name="single-llm",
+            agent_type="single_llm",
+            budget=0,
+            role_backend="llm",
+        ),
     }
 
 

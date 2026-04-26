@@ -8,19 +8,19 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-from agents.cortex_agent import CortexAgent
-from agents.flat import FlatAgent
-from cortex.budget import BudgetTracker
-from cortex.deliberator import CortexDeliberator
-from cortex.memory import EpisodeMemory
-from cortex.roles import (
+from CrisisWorld.agents.cortex_agent import CortexAgent
+from CrisisWorld.agents.flat import FlatAgent
+from CrisisWorld.cortex.budget import BudgetTracker
+from CrisisWorld.cortex.deliberator import CortexDeliberator
+from CrisisWorld.cortex.memory import EpisodeMemory
+from CrisisWorld.cortex.roles import (
     CriticRole,
     ExecutiveRole,
     PerceptionRole,
     PlannerRole,
     WorldModelerRole,
 )
-from models import (
+from CrisisWorld.models import (
     BudgetStatusSnapshot,
     EnvConfig,
     NoOp,
@@ -31,8 +31,8 @@ from models import (
     StakeholderSignal,
     Telemetry,
 )
-from schemas.episode import LogEvent
-from tracing.tracer import EpisodeTracer
+from CrisisWorld.schemas.episode import LogEvent
+from CrisisWorld.tracing.tracer import EpisodeTracer
 
 def _make_obs(
     turn: int = 0, infected: int = 50, medical: int = 100, urgency: float = 0.3,
@@ -97,7 +97,7 @@ class TestAgentEnv:
         assert agent._turn_count == 1
 
     def test_both_agents_satisfy_agent_protocol(self) -> None:
-        from protocols.agent import AgentProtocol
+        from CrisisWorld.protocols.agent import AgentProtocol
 
         flat = FlatAgent(config=EnvConfig(), rng=np.random.default_rng(42))
         cortex = _make_cortex_agent()
