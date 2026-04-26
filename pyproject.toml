@@ -24,6 +24,16 @@ server = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
 ]
+training = [
+    "trl>=0.9",
+    "peft>=0.12",
+    "transformers>=4.44",
+    "datasets>=2.20",
+    "accelerate>=0.33",
+    "bitsandbytes>=0.43",
+    "huggingface_hub>=0.23",
+    "torch>=2.2",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -49,21 +59,38 @@ server = "CrisisWorld.server.app:main"
 [tool.setuptools]
 include-package-data = true
 packages = ["CrisisWorld",
-            "CrisisWorld.agents", 
+            "CrisisWorld.agents",
             "CrisisWorld.cortex",
-            "CrisisWorld.evaluation", 
-            "CrisisWorld.protocols", 
-            "CrisisWorld.schemas", 
-            "CrisisWorld.server", 
-            "CrisisWorld.tests"
+            "CrisisWorld.cortex.roles",
+            "CrisisWorld.cortex.llm",
+            "CrisisWorld.evaluation",
+            "CrisisWorld.protocols",
+            "CrisisWorld.schemas",
+            "CrisisWorld.server",
+            "CrisisWorld.tests",
+            "CrisisWorld.tracing",
+            "CrisisWorld.training",
+            "CrisisWorld.training.router_sft",
         ]
 
 [tool.setuptools.package-dir]
 "CrisisWorld" = "."
 "CrisisWorld.agents" = "agents"
 "CrisisWorld.cortex" = "cortex"
+"CrisisWorld.cortex.roles" = "cortex/roles"
+"CrisisWorld.cortex.llm" = "cortex/llm"
 "CrisisWorld.evaluation" = "evaluation"
 "CrisisWorld.protocols" = "protocols"
 "CrisisWorld.schemas" = "schemas"
 "CrisisWorld.server" = "server"
 "CrisisWorld.tests" = "tests"
+"CrisisWorld.tracing" = "tracing"
+"CrisisWorld.training" = "training"
+"CrisisWorld.training.router_sft" = "training/router_sft"
+
+[tool.setuptools.package-data]
+"CrisisWorld" = [
+    "data/*.jsonl",
+    "configs/*.yaml",
+    "configs/*.yml",
+]
