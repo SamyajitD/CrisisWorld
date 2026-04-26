@@ -2,10 +2,15 @@
 
 from .budget import BudgetTracker
 from .deliberator import CortexDeliberator, DeliberationLog
+from .llm import HuggingFaceProvider, LLMRole
 from .memory import EpisodeMemory
-from . import llm
-from . import roles
-
+from .roles import (
+    CriticRole,
+    ExecutiveRole,
+    PerceptionRole,
+    PlannerRole,
+    WorldModelerRole,
+)
 
 __all__ = [
     "BudgetTracker",
@@ -19,6 +24,4 @@ __all__ = [
     "PerceptionRole",
     "PlannerRole",
     "WorldModelerRole",
-    "llm",
-    "roles",
 ]
