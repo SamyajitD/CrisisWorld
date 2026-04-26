@@ -340,4 +340,4 @@ And in a crisis world, that may be the difference between fast agreement and
 good judgment.
 
 # Results
-![Results](https://drive.google.com/file/d/1n9uF3NZFy3FszypLIl3cGuzeORwy7NOL/view?usp=sharing)
+![Results](https://drive.google.com/uc?export=view&id=1n9uF3NZFy3FszypLIl3cGuzeORwy7NOL)
