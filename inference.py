@@ -18,25 +18,25 @@ from typing import Any
 import numpy as np
 import yaml
 
-from CrisisWorld.agents.cortex_agent import CortexAgent
-from CrisisWorld.agents.flat import FlatAgent
-from CrisisWorld.cortex.budget import BudgetTracker
-from CrisisWorld.cortex.deliberator import CortexDeliberator
-from CrisisWorld.cortex.memory import EpisodeMemory, NullMemory
-from CrisisWorld.cortex.roles import (
+from .agents.cortex_agent import CortexAgent
+from .agents.flat import FlatAgent
+from .cortex.budget import BudgetTracker
+from .cortex.deliberator import CortexDeliberator
+from .cortex.memory import EpisodeMemory, NullMemory
+from .cortex.roles import (
     CriticRole,
     ExecutiveRole,
     PerceptionRole,
     PlannerRole,
     WorldModelerRole,
 )
-from CrisisWorld.evaluation.ablations import build_conditions
-from CrisisWorld.evaluation.analysis import comparison_table, diagnostic_report
-from CrisisWorld.evaluation.runner import ExperimentRunner
-from CrisisWorld.models import EnvConfig
-from CrisisWorld.schemas.config import CortexConfig, ExperimentConfig
-from CrisisWorld.tracing.tracer import EpisodeTracer
-from CrisisWorld.server import CrisisWorld as CrisisWorldEnvironment
+from .evaluation.ablations import build_conditions
+from .evaluation.analysis import comparison_table, diagnostic_report
+from .evaluation.runner import ExperimentRunner
+from .models import EnvConfig
+from .schemas.config import CortexConfig, ExperimentConfig
+from .tracing.tracer import EpisodeTracer
+from .server import CrisisWorld as CrisisWorldEnvironment
 
 logging.basicConfig(
     level=logging.INFO,
@@ -92,7 +92,7 @@ def _load_llm_config() -> tuple[dict, str | None]:
 def _load_llm_provider() -> Any:
     """Load default HuggingFace provider from config. Returns None if unavailable."""
     try:
-        from CrisisWorld.cortex.llm.provider import HuggingFaceProvider
+        from .cortex.llm.provider import HuggingFaceProvider
 
         cfg, api_key = _load_llm_config()
         if api_key is None:
@@ -148,8 +148,8 @@ def _make_cortex_agent(cond: Any, cortex_config: CortexConfig) -> CortexAgent:
     if role_backend == "llm":
         llm_cfg, api_key = _load_llm_config()
         if api_key is not None:
-            from CrisisWorld.cortex.llm.provider import create_provider_for_role
-            from CrisisWorld.cortex.llm.roles import LLMRole
+            from .cortex.llm.provider import create_provider_for_role
+            from .cortex.llm.roles import LLMRole
 
             roles = {}
             for name, heuristic in heuristic_roles.items():
