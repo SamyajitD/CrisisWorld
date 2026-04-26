@@ -126,3 +126,29 @@ class HuggingFaceProvider:
         self.total_calls = 0
         self.total_fallbacks = 0
         self.total_response_time = 0.0
+
+
+def create_provider_for_role(
+    role_name: str,
+    llm_config: dict[str, Any],
+    api_key: str,
+) -> HuggingFaceProvider:
+    """Create a provider for a specific role using the LLM config.
+
+    Supports per-role model overrides via llm_config["role_models"].
+    Falls back to llm_config["default_model"] if no override.
+    """
+    models = llm_config.get("models", {})
+    role_models = llm_config.get("role_models", {})
+    default_key = llm_config.get("default_model", "llama-3.1-8b")
+
+    # Per-role override or default
+    model_key = role_models.get(role_name, default_key)
+    model_cfg = models.get(model_key, {})
+
+    return HuggingFaceProvider(
+        api_key=api_key,
+        model=model_cfg.get("name", "meta-llama/Llama-3.1-8B-Instruct"),
+        max_tokens=model_cfg.get("max_tokens", 1024),
+        temperature=model_cfg.get("temperature", 0.1),
+    )

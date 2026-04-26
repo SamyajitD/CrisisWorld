@@ -4,31 +4,26 @@
 hf_token_file: "configs/.hf_token"
 
 models:
-  mistral-7b:
-    name: "mistralai/Mistral-7B-Instruct-v0.3"
+  llama-3-8b:
+    name: "meta-llama/Meta-Llama-3-8B-Instruct"
     max_tokens: 1024
     temperature: 0.1
 
-  llama-8b:
+  llama-3.1-8b:
     name: "meta-llama/Llama-3.1-8B-Instruct"
     max_tokens: 1024
     temperature: 0.1
 
-  phi-3:
-    name: "microsoft/Phi-3-mini-4k-instruct"
-    max_tokens: 512
-    temperature: 0.1
-
-  zephyr-7b:
-    name: "HuggingFaceH4/zephyr-7b-beta"
+  qwen-7b:
+    name: "Qwen/Qwen2.5-7B-Instruct"
     max_tokens: 1024
     temperature: 0.1
 
-# Default model for all roles (override per-role below)
-default_model: mistral-7b
+# Default model for all roles
+default_model: llama-3.1-8b
 
 # Per-role model overrides (optional)
 # role_models:
-#   perception: phi-3          # cheap model for data cleaning
-#   planner: llama-8b          # stronger model for reasoning
-#   executive: mistral-7b
+#   perception: llama-3-8b       # slightly cheaper
+#   planner: qwen-7b             # strong JSON output
+#   executive: llama-3.1-8b      # best reasoning

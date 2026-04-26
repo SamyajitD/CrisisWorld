@@ -70,17 +70,31 @@ class LLMRole:
     def cost(self) -> int:
         return self._cost
 
+    @property
+    def model_identity(self) -> str:
+        """Model name used by this role (for tracing)."""
+        return self._provider.model_name
+
     def invoke(self, role_input: RoleInput) -> Artifact:
         user_prompt = self._build_user(role_input.payload)
+        fallback_used = False
         try:
             raw = self._provider.complete(self._system_prompt, user_prompt)
             artifact = self._artifact_type.model_validate(raw)
             _log.debug("LLM %s produced valid %s", self._name, type(artifact).__name__)
-            return artifact
         except Exception as exc:
             self._provider.total_fallbacks += 1
+            fallback_used = True
             _log.warning(
                 "LLM %s failed (%s: %s), using heuristic fallback",
                 self._name, type(exc).__name__, exc,
             )
-            return self._fallback.invoke(role_input)
+            artifact = self._fallback.invoke(role_input)
+
+        # Store provenance for tracing
+        self._last_call_info = {
+            "model": self._provider.model_name,
+            "role": self._name,
+            "fallback_used": fallback_used,
+        }
+        return artifact

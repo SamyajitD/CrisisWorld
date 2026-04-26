@@ -63,32 +63,52 @@ def _make_flat_agent(config: EnvConfig, seed: int, fat_mode: bool = False) -> Fl
     return FlatAgent(config=config, rng=rng, fat_mode=fat_mode)
 
 
+def _load_llm_config() -> tuple[dict, str | None]:
+    """Load LLM config and API key. Returns (config_dict, api_key) or ({}, None)."""
+    try:
+        cfg_path = Path(__file__).resolve().parent / "configs" / "llm_config.yaml"
+        if not cfg_path.exists():
+            logger.warning("configs/llm_config.yaml not found, LLM roles disabled")
+            return {}, None
+        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+        token_file = Path(cfg.get("hf_token_file", "configs/.hf_token"))
+        if not token_file.is_absolute():
+            token_file = Path(__file__).resolve().parent / token_file
+        if not token_file.exists():
+            # Try HF_TOKEN env var
+            import os
+            api_key = os.environ.get("HF_TOKEN", "")
+            if not api_key:
+                logger.warning("%s not found and HF_TOKEN not set, LLM roles disabled", token_file)
+                return cfg, None
+        else:
+            api_key = token_file.read_text(encoding="utf-8").strip()
+        return cfg, api_key
+    except Exception as exc:
+        logger.warning("Failed to load LLM config: %s", exc)
+        return {}, None
+
+
 def _load_llm_provider() -> Any:
-    """Load HuggingFace provider from config. Returns None if unavailable."""
+    """Load default HuggingFace provider from config. Returns None if unavailable."""
     try:
         from CrisisWorld.cortex.llm.provider import HuggingFaceProvider
 
-        cfg_path = Path("CrisisWorld/configs/llm_config.yaml")
-        if not cfg_path.exists():
-            logger.warning("CrisisWorld/configs/llm_config.yaml not found, LLM roles disabled")
+        cfg, api_key = _load_llm_config()
+        if api_key is None:
             return None
-        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
-        # token_file = Path("CrisisWorld/configs/.hf_token")
-        token_file = Path("Invalid_Token_File")
-        if not token_file.exists():
-            logger.warning("%s not found, LLM roles disabled", token_file)
-            return None
-        api_key = token_file.read_text(encoding="utf-8").strip()
 
-        default_model_key = cfg.get("default_model", "mistral-7b")
+        default_model_key = cfg.get("default_model", "llama-3.1-8b")
         model_cfg = cfg.get("models", {}).get(default_model_key, {})
-        model_name = model_cfg.get("name", "mistralai/Mistral-7B-Instruct-v0.3")
+        model_name = model_cfg.get("name", "meta-llama/Llama-3.1-8B-Instruct")
         max_tokens = model_cfg.get("max_tokens", 1024)
         temperature = model_cfg.get("temperature", 0.1)
 
         return HuggingFaceProvider(
-            api_key=api_key, model=model_name,
-            max_tokens=max_tokens, temperature=temperature,
+            api_key=api_key,
+            model=model_name,
+            max_tokens=max_tokens,
+            temperature=temperature,
         )
     except Exception as exc:
         logger.warning("Failed to load LLM provider: %s", exc)
@@ -105,7 +125,11 @@ def _make_cortex_agent(cond: Any, cortex_config: CortexConfig) -> CortexAgent:
         "executive": ExecutiveRole,
     }
     # Use condition's enabled_roles; always include perception + executive
-    enabled = set(cond.enabled_roles) if hasattr(cond, "enabled_roles") else set(all_role_map.keys())
+    enabled = (
+        set(cond.enabled_roles)
+        if hasattr(cond, "enabled_roles")
+        else set(all_role_map.keys())
+    )
     enabled.add("perception")
     enabled.add("executive")
 
@@ -122,15 +146,19 @@ def _make_cortex_agent(cond: Any, cortex_config: CortexConfig) -> CortexAgent:
     # Wire LLM roles if backend is "llm"
     role_backend = getattr(cond, "role_backend", "heuristic")
     if role_backend == "llm":
-        provider = _load_llm_provider()
-        if provider is not None:
+        llm_cfg, api_key = _load_llm_config()
+        if api_key is not None:
+            from CrisisWorld.cortex.llm.provider import create_provider_for_role
             from CrisisWorld.cortex.llm.roles import LLMRole
 
             roles = {}
             for name, heuristic in heuristic_roles.items():
+                provider = create_provider_for_role(name, llm_cfg, api_key)
                 roles[name] = LLMRole(name=name, provider=provider, fallback=heuristic)
-            logger.info("Using LLM roles (%s) for condition %s",
-                        provider.model_name, getattr(cond, "name", "?"))
+            logger.info(
+                "Using per-role LLM models for condition %s",
+                getattr(cond, "name", "?"),
+            )
         else:
             logger.warning("LLM provider unavailable, falling back to heuristic roles")
             roles = heuristic_roles
@@ -168,6 +196,7 @@ def _build_agent(
         provider = _load_llm_provider()
         if provider is not None:
             from agents.single_llm import SingleLLMAgent
+
             return SingleLLMAgent(provider=provider)
         logger.warning("LLM unavailable for single_llm, falling back to flat")
         return _make_flat_agent(env_config, seed)
@@ -182,16 +211,28 @@ def _build_agent(
 
 def _load_experiment_config(path: str) -> ExperimentConfig:
     """Load experiment config from YAML file."""
-    path = os.path.join('CrisisWorld', path)
-    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    # Resolve relative to project root (where this file lives)
+    project_root = Path(__file__).resolve().parent
+    config_path = project_root / path
+    if not config_path.exists():
+        config_path = Path(path)  # fallback to CWD-relative
+    raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     env_raw = raw.get("env_config", {})
     cortex_raw = raw.get("cortex_config", {})
     return ExperimentConfig(
         seeds=tuple(raw.get("seeds", [42])),
-        conditions=tuple(raw.get("conditions", [
-            "flat-lite", "flat-fat",
-            "cortex-lite", "cortex-full", "cortex-tuned",
-        ])),
+        conditions=tuple(
+            raw.get(
+                "conditions",
+                [
+                    "flat-lite",
+                    "flat-fat",
+                    "cortex-lite",
+                    "cortex-full",
+                    "cortex-tuned",
+                ],
+            )
+        ),
         env_config=EnvConfig(**env_raw) if env_raw else EnvConfig(),
         cortex_config=CortexConfig(**cortex_raw) if cortex_raw else CortexConfig(),
         output_dir=raw.get("output_dir", "results"),
@@ -209,12 +250,16 @@ def main() -> None:
         description="CrisisWorld + Cortex — outbreak-control experiments"
     )
     parser.add_argument(
-        "--agent", choices=["flat", "cortex"], default="flat",
+        "--agent",
+        choices=["flat", "cortex"],
+        default="flat",
         help="Agent type for single-run mode",
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
-        "--experiment", type=str, default=None,
+        "--experiment",
+        type=str,
+        default=None,
         help="Path to experiment YAML config (runs full ablation)",
     )
     args = parser.parse_args()
@@ -225,9 +270,13 @@ def main() -> None:
         exp_config = ExperimentConfig(
             seeds=(args.seed,),
             conditions=(
-                f"{args.agent}-lite", f"{args.agent}-fat",
-            ) if args.agent == "flat" else (
-                f"{args.agent}-lite", f"{args.agent}-full",
+                f"{args.agent}-lite",
+                f"{args.agent}-fat",
+            )
+            if args.agent == "flat"
+            else (
+                f"{args.agent}-lite",
+                f"{args.agent}-full",
             ),
             env_config=EnvConfig(),
             cortex_config=CortexConfig(),
@@ -245,7 +294,11 @@ def main() -> None:
         config=exp_config,
     )
 
-    logger.info("Running experiment: conditions=%s seeds=%s", exp_config.conditions, exp_config.seeds)
+    logger.info(
+        "Running experiment: conditions=%s seeds=%s",
+        exp_config.conditions,
+        exp_config.seeds,
+    )
     results = runner.run()
 
     # Save results
@@ -265,7 +318,10 @@ def main() -> None:
         for ep in episodes:
             logger.info(
                 "Condition=%s seed=%d turns=%d reward=%.2f reason=%s",
-                cond_name, ep.seed, ep.total_turns, ep.total_reward,
+                cond_name,
+                ep.seed,
+                ep.total_turns,
+                ep.total_reward,
                 ep.termination_reason,
             )
 
